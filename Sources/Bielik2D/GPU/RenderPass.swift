@@ -2,6 +2,28 @@ import CSDL3
 
 public struct RenderPass {
     public let handle: OpaquePointer
+
+    public func bind(_ pipeline: GraphicsPipeline) {
+        SDL_BindGPUGraphicsPipeline(handle, pipeline.handle)
+    }
+
+    public func bindVertexBuffer(_ buffer: Buffer, offset: Int = 0, slot: UInt32 = 0) {
+        var binding = SDL_GPUBufferBinding()
+        binding.buffer = buffer.handle
+        binding.offset = UInt32(offset)
+        SDL_BindGPUVertexBuffers(handle, slot, &binding, 1)
+    }
+
+    public func bindFragmentSampler(_ texture: Texture, sampler: Sampler, slot: UInt32 = 0) {
+        var binding = SDL_GPUTextureSamplerBinding()
+        binding.texture = texture.handle
+        binding.sampler = sampler.handle
+        SDL_BindGPUFragmentSamplers(handle, slot, &binding, 1)
+    }
+
+    public func draw(vertexCount: Int, firstVertex: Int = 0, instanceCount: Int = 1) {
+        SDL_DrawGPUPrimitives(handle, UInt32(vertexCount), UInt32(instanceCount), UInt32(firstVertex), 0)
+    }
 }
 
 extension CommandBuffer {
