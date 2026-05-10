@@ -20,4 +20,6 @@ compile() {
 echo "==> compiling HLSL shaders"
 compile "$SRC/basic.vert.hlsl" vert "$OUT/basic.vert.spv"
 compile "$SRC/basic.frag.hlsl" frag "$OUT/basic.frag.spv"
+compile "$SRC/sprite.vert.hlsl" vert "$OUT/sprite.vert.spv"
+compile "$SRC/sprite.frag.hlsl" frag "$OUT/sprite.frag.spv"
 echo "==> done"

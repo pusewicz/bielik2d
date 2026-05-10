@@ -63,12 +63,23 @@ extension Shader {
         ShadercrossLifecycle.ensureInit()
         return try bytecode.withUnsafeBytes { bytes -> Shader in
             try entryPoint.withCString { entry in
+                let basePtr = bytes.baseAddress?.assumingMemoryBound(to: UInt8.self)
+                let metaPtr = SDL_ShaderCross_ReflectGraphicsSPIRV(basePtr, bytecode.count, 0)
+                defer { if let metaPtr { SDL_free(metaPtr) } }
+
                 var info = SDL_ShaderCross_SPIRV_Info()
-                info.bytecode = bytes.baseAddress?.assumingMemoryBound(to: UInt8.self)
+                info.bytecode = basePtr
                 info.bytecode_size = bytecode.count
                 info.entrypoint = entry
                 info.shader_stage = stage.sdlValue
-                var resourceInfo = SDL_ShaderCross_GraphicsShaderResourceInfo()
+
+                var resourceInfo: SDL_ShaderCross_GraphicsShaderResourceInfo
+                if let metaPtr {
+                    resourceInfo = metaPtr.pointee.resource_info
+                } else {
+                    resourceInfo = SDL_ShaderCross_GraphicsShaderResourceInfo()
+                }
+
                 guard let sh = SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(device.handle, &info, &resourceInfo, 0) else {
                     throw ShaderError.compileFailed(lastSDLError())
                 }

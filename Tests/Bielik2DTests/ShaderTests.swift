@@ -17,6 +17,22 @@ struct ShaderTests {
         defer { fs.destroy() }
     }
 
+    @Test func spritePipelineCompilesWithUnifiedVertex() throws {
+        let app = try App(title: "sprite-pipe", width: 64, height: 64)
+        defer { app.destroy() }
+        let vs = try Shader.builtin(name: "sprite.vert", stage: .vertex, on: app.gpu)
+        let fs = try Shader.builtin(name: "sprite.frag", stage: .fragment, on: app.gpu)
+        let pipe = try app.gpu.makePipeline(
+            vertex: vs, fragment: fs,
+            vertexBuffer: Vertex.bufferLayout,
+            colorTargetFormat: .bgra8Unorm,
+            blendMode: .alpha
+        )
+        pipe.destroy()
+        vs.destroy()
+        fs.destroy()
+    }
+
     @Test func createsPipelineFromBasicShaders() throws {
         let app = try App(title: "pipe", width: 64, height: 64)
         defer { app.destroy() }
