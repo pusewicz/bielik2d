@@ -15,7 +15,7 @@ public enum AppError: Error, CustomStringConvertible {
 public final class App {
     public private(set) var isRunning: Bool = false
     public let gpu: GPUDevice
-    private var window: OpaquePointer?
+    public private(set) var window: OpaquePointer?
 
     public init(title: String, width: Int, height: Int) throws {
         guard SDL_Init(SDL_INIT_VIDEO) else {

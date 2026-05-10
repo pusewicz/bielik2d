@@ -6,6 +6,20 @@ public struct CommandBuffer {
     public func submit() {
         _ = SDL_SubmitGPUCommandBuffer(handle)
     }
+
+    /// Waits for and acquires the swapchain texture for `window`.
+    /// Returns nil when the window is minimized — caller should still submit the command buffer.
+    public func acquireSwapchainTexture(for window: OpaquePointer, device: GPUDevice) -> Texture? {
+        var tex: OpaquePointer?
+        var w: UInt32 = 0
+        var h: UInt32 = 0
+        guard SDL_WaitAndAcquireGPUSwapchainTexture(handle, window, &tex, &w, &h),
+              let texHandle = tex else { return nil }
+        let fmtRaw = SDL_GetGPUSwapchainTextureFormat(device.handle, window)
+        let format: TextureFormat = (fmtRaw == SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM) ? .rgba8Unorm : .bgra8Unorm
+        return Texture(handle: texHandle, width: Int(w), height: Int(h),
+                       format: format, device: device.handle, owned: false)
+    }
 }
 
 extension GPUDevice {

@@ -34,9 +34,12 @@ public struct Texture {
     public let height: Int
     public let format: TextureFormat
     let device: OpaquePointer
+    let owned: Bool
 
     public func destroy() {
-        SDL_ReleaseGPUTexture(device, handle)
+        if owned {
+            SDL_ReleaseGPUTexture(device, handle)
+        }
     }
 }
 
@@ -56,7 +59,7 @@ extension GPUDevice {
         guard let tex = SDL_CreateGPUTexture(handle, &info) else {
             throw GPUError.createTexture(lastSDLError())
         }
-        return Texture(handle: tex, width: width, height: height, format: format, device: handle)
+        return Texture(handle: tex, width: width, height: height, format: format, device: handle, owned: true)
     }
 }
 
