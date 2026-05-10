@@ -26,5 +26,10 @@ let package = Package(
             dependencies: ["Bielik2D", "CSDL3"],
             linkerSettings: homebrewLib
         ),
+        .executableTarget(
+            name: "Bielik2DDemo",
+            dependencies: ["Bielik2D"],
+            linkerSettings: homebrewLib
+        ),
     ]
 )
