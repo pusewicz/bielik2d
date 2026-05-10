@@ -50,15 +50,22 @@ public final class Batcher {
     }
 
     public func emitQuad(rect: Rect, uv: Rect, color: SIMD4<Float>) {
-        let p0 = SIMD2<Float>(rect.minX, rect.minY)
-        let p1 = SIMD2<Float>(rect.maxX, rect.minY)
-        let p2 = SIMD2<Float>(rect.maxX, rect.maxY)
-        let p3 = SIMD2<Float>(rect.minX, rect.maxY)
+        emitQuadCorners(
+            p0: SIMD2<Float>(rect.minX, rect.minY),
+            p1: SIMD2<Float>(rect.maxX, rect.minY),
+            p2: SIMD2<Float>(rect.maxX, rect.maxY),
+            p3: SIMD2<Float>(rect.minX, rect.maxY),
+            uv: uv,
+            color: color
+        )
+    }
+
+    public func emitQuadCorners(p0: SIMD2<Float>, p1: SIMD2<Float>, p2: SIMD2<Float>, p3: SIMD2<Float>,
+                                uv: Rect, color: SIMD4<Float>) {
         let u0 = SIMD2<Float>(uv.minX, uv.minY)
         let u1 = SIMD2<Float>(uv.maxX, uv.minY)
         let u2 = SIMD2<Float>(uv.maxX, uv.maxY)
         let u3 = SIMD2<Float>(uv.minX, uv.maxY)
-        // Two triangles: (p0,p1,p2), (p0,p2,p3)
         vertices.append(Vertex(pos: p0, uv: u0, color: color))
         vertices.append(Vertex(pos: p1, uv: u1, color: color))
         vertices.append(Vertex(pos: p2, uv: u2, color: color))
