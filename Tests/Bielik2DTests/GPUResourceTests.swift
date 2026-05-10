@@ -53,6 +53,18 @@ struct GPUResourceTests {
         #expect(tex.height == 4)
     }
 
+    @Test func renderPassClearsAColorTarget() throws {
+        let app = try App(title: "rp", width: 64, height: 64)
+        defer { app.destroy() }
+        let target = try app.gpu.makeTexture(width: 64, height: 64, format: .rgba8Unorm, usage: .colorTarget)
+        defer { target.destroy() }
+        let cmd = try app.gpu.acquireCommandBuffer()
+        cmd.withRenderPass(colorTarget: target, clear: Color(r: 0.1, g: 0.2, b: 0.3, a: 1.0)) { _ in
+            // no draws — just clear
+        }
+        cmd.submit()
+    }
+
     @Test func samplerCreatesWithNearestAndLinearFilters() throws {
         let app = try App(title: "smp", width: 64, height: 64)
         defer { app.destroy() }
