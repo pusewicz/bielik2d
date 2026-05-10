@@ -1,6 +1,6 @@
 import CSDL3
 
-public enum TextureFormat {
+public enum TextureFormat: Sendable {
     case rgba8Unorm
     case bgra8Unorm
 
