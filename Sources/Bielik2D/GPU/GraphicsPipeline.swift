@@ -1,11 +1,12 @@
 import CSDL3
 
-public enum VertexFormat {
-    case float2, float3, float4
+public enum VertexFormat: Sendable {
+    case float, float2, float3, float4
     case ubyte4Norm
 
     var sdlValue: SDL_GPUVertexElementFormat {
         switch self {
+        case .float: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT
         case .float2: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2
         case .float3: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3
         case .float4: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4
@@ -15,11 +16,13 @@ public enum VertexFormat {
 }
 
 public struct VertexAttribute: Sendable {
+    public var name: String
     public var location: UInt32
     public var format: VertexFormat
     public var offset: UInt32
 
-    public init(location: UInt32, format: VertexFormat, offset: UInt32) {
+    public init(name: String = "", location: UInt32, format: VertexFormat, offset: UInt32) {
+        self.name = name
         self.location = location
         self.format = format
         self.offset = offset
@@ -36,7 +39,6 @@ public struct VertexBufferDescriptor: Sendable {
     }
 }
 
-extension VertexFormat: Sendable {}
 
 extension BlendMode {
     var sdlState: SDL_GPUColorTargetBlendState {
