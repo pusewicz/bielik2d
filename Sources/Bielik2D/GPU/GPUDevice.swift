@@ -10,6 +10,7 @@ public enum GPUError: Error, CustomStringConvertible {
     case createTransferBuffer(String)
     case mapTransferBuffer(String)
     case beginRenderPass(String)
+    case createPipeline(String)
 
     public var description: String {
         switch self {
@@ -22,6 +23,7 @@ public enum GPUError: Error, CustomStringConvertible {
         case .createTransferBuffer(let m): "SDL_CreateGPUTransferBuffer failed: \(m)"
         case .mapTransferBuffer(let m): "SDL_MapGPUTransferBuffer failed: \(m)"
         case .beginRenderPass(let m): "SDL_BeginGPURenderPass failed: \(m)"
+        case .createPipeline(let m): "SDL_CreateGPUGraphicsPipeline failed: \(m)"
         }
     }
 }
