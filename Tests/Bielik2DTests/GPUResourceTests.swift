@@ -33,6 +33,26 @@ struct GPUResourceTests {
         cmd.submit()
     }
 
+    @Test func textureUploadsPixelsViaTransferBuffer() throws {
+        let app = try App(title: "tex", width: 64, height: 64)
+        defer { app.destroy() }
+        let pixels: [UInt8] = Array(repeating: 0xAB, count: 4 * 4 * 4) // 4x4 RGBA
+        let xfer = try app.gpu.makeTransferBuffer(size: pixels.count, usage: .upload)
+        defer { xfer.destroy() }
+        xfer.withMappedMemory { $0.copyMemory(from: pixels, byteCount: pixels.count) }
+
+        let tex = try app.gpu.makeTexture(width: 4, height: 4, format: .rgba8Unorm, usage: .sampler)
+        defer { tex.destroy() }
+
+        let cmd = try app.gpu.acquireCommandBuffer()
+        cmd.withCopyPass { copy in
+            copy.upload(from: xfer, to: tex)
+        }
+        cmd.submit()
+        #expect(tex.width == 4)
+        #expect(tex.height == 4)
+    }
+
     @Test func transferBufferMapsAndStoresBytes() throws {
         let app = try App(title: "xfer", width: 64, height: 64)
         defer { app.destroy() }
