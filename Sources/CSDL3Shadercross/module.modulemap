@@ -1,0 +1,5 @@
+module CSDL3Shadercross [system] {
+    header "shim.h"
+    link "SDL3_shadercross"
+    export *
+}

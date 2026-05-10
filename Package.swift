@@ -1,8 +1,14 @@
 // swift-tools-version:6.2
 import PackageDescription
 
-let homebrewLib: [LinkerSetting] = [
-    .unsafeFlags(["-L/opt/homebrew/lib"])
+let vendorLib = "\(Context.packageDirectory)/vendor/.install/lib"
+
+let nativeLibPaths: [LinkerSetting] = [
+    .unsafeFlags([
+        "-L/opt/homebrew/lib",
+        "-L\(vendorLib)",
+        "-Xlinker", "-rpath", "-Xlinker", vendorLib,
+    ])
 ]
 
 let package = Package(
@@ -16,20 +22,25 @@ let package = Package(
             name: "CSDL3",
             path: "Sources/CSDL3"
         ),
+        .systemLibrary(
+            name: "CSDL3Shadercross",
+            path: "Sources/CSDL3Shadercross"
+        ),
         .target(
             name: "Bielik2D",
-            dependencies: ["CSDL3"],
-            linkerSettings: homebrewLib
+            dependencies: ["CSDL3", "CSDL3Shadercross"],
+            resources: [.copy("Resources/shaders")],
+            linkerSettings: nativeLibPaths
         ),
         .testTarget(
             name: "Bielik2DTests",
             dependencies: ["Bielik2D", "CSDL3"],
-            linkerSettings: homebrewLib
+            linkerSettings: nativeLibPaths
         ),
         .executableTarget(
             name: "Bielik2DDemo",
             dependencies: ["Bielik2D"],
-            linkerSettings: homebrewLib
+            linkerSettings: nativeLibPaths
         ),
     ]
 )
