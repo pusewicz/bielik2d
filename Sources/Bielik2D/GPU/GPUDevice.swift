@@ -3,11 +3,25 @@ import CSDL3
 public enum GPUError: Error, CustomStringConvertible {
     case createDevice(String)
     case claimWindow(String)
+    case acquireCommandBuffer(String)
+    case createTexture(String)
+    case createBuffer(String)
+    case createSampler(String)
+    case createTransferBuffer(String)
+    case mapTransferBuffer(String)
+    case beginRenderPass(String)
 
     public var description: String {
         switch self {
         case .createDevice(let m): "SDL_CreateGPUDevice failed: \(m)"
         case .claimWindow(let m): "SDL_ClaimWindowForGPUDevice failed: \(m)"
+        case .acquireCommandBuffer(let m): "SDL_AcquireGPUCommandBuffer failed: \(m)"
+        case .createTexture(let m): "SDL_CreateGPUTexture failed: \(m)"
+        case .createBuffer(let m): "SDL_CreateGPUBuffer failed: \(m)"
+        case .createSampler(let m): "SDL_CreateGPUSampler failed: \(m)"
+        case .createTransferBuffer(let m): "SDL_CreateGPUTransferBuffer failed: \(m)"
+        case .mapTransferBuffer(let m): "SDL_MapGPUTransferBuffer failed: \(m)"
+        case .beginRenderPass(let m): "SDL_BeginGPURenderPass failed: \(m)"
         }
     }
 }
