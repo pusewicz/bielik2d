@@ -1,9 +1,11 @@
 import Bielik2D
+import Foundation
 
-let app = try App(title: "Bielik2D Demo", width: 1280, height: 720)
+let windowSize = SIMD2<Float>(1280, 720)
+
+let app = try App(title: "Bielik2D Demo", width: Int(windowSize.x), height: Int(windowSize.y))
 print("GPU driver: \(app.gpu.driverName)")
 
-// Build the sprite pipeline.
 let vs = try Shader.builtin(name: "sprite.vert", stage: .vertex, on: app.gpu)
 let fs = try Shader.builtin(name: "sprite.frag", stage: .fragment, on: app.gpu)
 let pipe = try app.gpu.makePipeline(
@@ -13,7 +15,7 @@ let pipe = try app.gpu.makePipeline(
     blendMode: .alpha
 )
 
-// A 1×1 white texture lets the same shader draw solid-color quads.
+// 1×1 white texture for solid quads.
 let whiteTex = try app.gpu.makeTexture(width: 1, height: 1, usage: .sampler)
 do {
     let pixel: [UInt8] = [0xFF, 0xFF, 0xFF, 0xFF]
@@ -26,25 +28,34 @@ do {
 }
 let sampler = try app.gpu.makeSampler(filter: .nearest)
 
-// Vertex buffer big enough for ~1k quads.
 let maxVertexCount = 6 * 1024
 let vertexBufferSize = maxVertexCount * MemoryLayout<Vertex>.stride
 let vbuf = try app.gpu.makeBuffer(size: vertexBufferSize, usage: .vertex)
 let vxfer = try app.gpu.makeTransferBuffer(size: vertexBufferSize, usage: .upload)
 
 let batcher = Batcher()
+let draw = Draw(batcher: batcher)
+let camera = Camera(viewportSize: windowSize)
+let startTime = Date()
 
 while app.isRunning {
     app.update()
     guard let window = app.window else { break }
 
+    let t = Float(Date().timeIntervalSince(startTime))
+
     batcher.reset()
     batcher.setTexture(whiteTex.handle)
-    batcher.emitQuad(
-        rect: Rect(x: -0.5, y: -0.5, width: 1.0, height: 1.0),
-        uv: Rect(x: 0, y: 0, width: 1, height: 1),
-        color: SIMD4<Float>(1.0, 0.4, 0.6, 1.0)
-    )
+
+    draw.pushTransform(.translation(x: windowSize.x / 2, y: windowSize.y / 2))
+    draw.pushTransform(.rotation(angleRadians: t))
+    draw.pushColor(Color(r: 1.0, g: 0.4, b: 0.6))
+    draw.quad(rect: Rect(x: -150, y: -150, width: 300, height: 300),
+              uv: Rect(x: 0, y: 0, width: 1, height: 1),
+              color: SIMD4<Float>(1, 1, 1, 1))
+    draw.popColor()
+    draw.popTransform()
+    draw.popTransform()
 
     let cmd = try app.gpu.acquireCommandBuffer()
     guard let swap = cmd.acquireSwapchainTexture(for: window, device: app.gpu) else {
@@ -63,6 +74,8 @@ while app.isRunning {
             copy.upload(from: vxfer, offset: 0, to: vbuf, offset: 0, size: vertexBytes)
         }
     }
+
+    cmd.pushVertexUniform(camera.viewProjection)
 
     cmd.withRenderPass(colorTarget: swap, clear: Color(r: 0.10, g: 0.12, b: 0.18)) { pass in
         guard !batcher.vertices.isEmpty else { return }

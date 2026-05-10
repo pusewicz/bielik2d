@@ -25,9 +25,14 @@ struct VSOutput {
     float4 color    : COLOR0;
 };
 
+cbuffer CameraUBO : register(b0, space1) {
+    float4x4 viewProj;
+};
+
 VSOutput main(VSInput input) {
     VSOutput o;
-    o.position = float4(input.pos, 0.0, 1.0);
+    float4 worldPos = float4(input.pos, 0.0, 1.0);
+    o.position = mul(viewProj, worldPos);
     o.uv = input.uv;
     o.color = float4(input.color.rgb, input.color.a * input.alpha);
     return o;

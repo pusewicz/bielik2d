@@ -7,6 +7,20 @@ public struct CommandBuffer {
         _ = SDL_SubmitGPUCommandBuffer(handle)
     }
 
+    public func pushVertexUniform<T>(_ value: T, slot: UInt32 = 0) {
+        var v = value
+        withUnsafePointer(to: &v) { ptr in
+            SDL_PushGPUVertexUniformData(handle, slot, ptr, UInt32(MemoryLayout<T>.size))
+        }
+    }
+
+    public func pushFragmentUniform<T>(_ value: T, slot: UInt32 = 0) {
+        var v = value
+        withUnsafePointer(to: &v) { ptr in
+            SDL_PushGPUFragmentUniformData(handle, slot, ptr, UInt32(MemoryLayout<T>.size))
+        }
+    }
+
     /// Waits for and acquires the swapchain texture for `window`.
     /// Returns nil when the window is minimized — caller should still submit the command buffer.
     public func acquireSwapchainTexture(for window: OpaquePointer, device: GPUDevice) -> Texture? {
