@@ -43,4 +43,15 @@ struct SDLBoundTests {
         defer { app.destroy() }
         #expect(app.gpu.driverName.isEmpty == false)
     }
+
+    @Test func appUpdateStopsRunningOnQuitEvent() throws {
+        let app = try App(title: "quit test", width: 320, height: 200)
+        defer { app.destroy() }
+        #expect(app.isRunning)
+        var ev = SDL_Event()
+        ev.type = SDL_EVENT_QUIT.rawValue
+        _ = SDL_PushEvent(&ev)
+        app.update()
+        #expect(!app.isRunning)
+    }
 }

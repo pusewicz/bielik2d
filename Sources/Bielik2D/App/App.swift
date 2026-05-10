@@ -37,6 +37,20 @@ public final class App {
         self.isRunning = true
     }
 
+    public func update() {
+        var ev = SDL_Event()
+        while SDL_PollEvent(&ev) {
+            switch SDL_EventType(rawValue: ev.type) {
+            case SDL_EVENT_QUIT:
+                isRunning = false
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                isRunning = false
+            default:
+                break
+            }
+        }
+    }
+
     public func destroy() {
         if let win = window {
             gpu.release(window: win)
