@@ -53,6 +53,15 @@ struct GPUResourceTests {
         #expect(tex.height == 4)
     }
 
+    @Test func samplerCreatesWithNearestAndLinearFilters() throws {
+        let app = try App(title: "smp", width: 64, height: 64)
+        defer { app.destroy() }
+        let nearest = try app.gpu.makeSampler(filter: .nearest, addressMode: .clampToEdge)
+        defer { nearest.destroy() }
+        let linear = try app.gpu.makeSampler(filter: .linear, addressMode: .repeat)
+        defer { linear.destroy() }
+    }
+
     @Test func transferBufferMapsAndStoresBytes() throws {
         let app = try App(title: "xfer", width: 64, height: 64)
         defer { app.destroy() }
