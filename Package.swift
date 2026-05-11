@@ -21,6 +21,9 @@ let package = Package(
         .library(name: "Bielik2D", targets: ["Bielik2D"]),
         .library(name: "Bielik2DWeb", targets: ["Bielik2DWeb"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/swiftwasm/JavaScriptKit.git", from: "0.52.0"),
+    ],
     targets: [
         .systemLibrary(
             name: "CSDL3",
@@ -41,7 +44,11 @@ let package = Package(
         ),
         .target(
             name: "Bielik2DWeb",
-            dependencies: ["Bielik2D"]
+            dependencies: [
+                "Bielik2D",
+                .product(name: "JavaScriptKit", package: "JavaScriptKit", condition: .when(platforms: [.wasi])),
+                .product(name: "JavaScriptEventLoop", package: "JavaScriptKit", condition: .when(platforms: [.wasi])),
+            ]
         ),
         .testTarget(
             name: "Bielik2DTests",
