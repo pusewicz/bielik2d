@@ -32,18 +32,25 @@ The demo opens a window with a spinning pink quad, a blue filled circle, a yello
 
 ## Web build (experimental)
 
-The `web` branch ships a parallel WebAssembly + WebGPU target. It does not use SDL3 — the platform layer is JavaScriptKit and the renderer is WebGPU through the browser's JS API.
+The `web` branch ships a parallel WebAssembly + WebGPU target. It does not use SDL3 — the platform layer is JavaScriptKit and the renderer is WebGPU through the browser's JS API. Pure-Swift bits (`Draw`, `Batcher`, `Vertex`, `Primitives`, `Camera`, `Mat3x2`) are reused unchanged.
+
+One-time setup (installs `swiftly`, the Swift 6.3.1 toolchain, and the wasm SDK; idempotent):
 
 ```sh
-swiftly install 6.3 && swiftly use 6.3
-swift sdk install \
-  https://download.swift.org/swift-6.3-release/wasm-sdk/swift-6.3-RELEASE/swift-6.3-RELEASE_wasm.artifactbundle.tar.gz \
-  --checksum 9fa4016ee632c7e9e906608ec3b55cf13dfc4dff44e47574c5af58064dc33fd9
-./scripts/build-web.sh
+./scripts/install-wasm-sdk.sh
+```
+
+Build and serve:
+
+```sh
+./Shaders/build.sh         # compiles HLSL → SPIR-V and emits WGSL via naga
+./scripts/build-web.sh     # cross-compiles to wasm32 via PackageToJS plugin
 python3 -m http.server -d web/dist
 ```
 
-Then open `http://localhost:8000` in Chrome or another WebGPU-capable browser. Set `BIELIK2D_WASM_SDK` to override the SDK ID if `swift sdk list` shows a different name.
+Then open `http://localhost:8000` in Chrome or another WebGPU-capable browser. The web demo shows a sprite, a filled SDF circle, an SDF line, and a "Hello, Bielik!" label — the same scene as the macOS demo. Override `BIELIK2D_WASM_SDK` if `swift sdk list` reports a different SDK id.
+
+The host HTML uses an import map to resolve the `@bjorn3/browser_wasi_shim` bare specifier the PackageToJS plugin emits — no bundler required, just a static server.
 
 ## Layout
 
@@ -54,7 +61,9 @@ Then open `http://localhost:8000` in Chrome or another WebGPU-capable browser. S
 | `Sources/Bielik2D/Draw/` | `Vertex`, `Batcher`, `Draw` (immediate-mode), `Sprite`, `Canvas`, `Camera`, `Color`, `Primitives` (SDF shapes), `StateStack` |
 | `Sources/Bielik2D/Text/` | `Font`, `TextEngine`, `Draw.text(_:font:at:color:)` |
 | `Sources/Bielik2D/Math/` | `Mat3x2`, `Rect` |
-| `Sources/Bielik2D/Resources/shaders/` | Pre-compiled SPIR-V bytecode (built by `Shaders/build.sh`) |
+| `Sources/Bielik2D/Backend/` | `SDL3Platform`, `SDL3AssetLoader` — extracted seams so the Web target can stand parallel |
+| `Sources/Bielik2D/Resources/shaders/` | Pre-compiled SPIR-V + WGSL (built by `Shaders/build.sh`) |
+| `Shaders/wgsl/` | Hand-written WGSL overrides that overlay naga's output |
 | `Sources/CSDL3/` | systemLibrary umbrella for SDL3, SDL3_image, SDL3_ttf |
 | `Sources/CSDL3Shadercross/` | systemLibrary for the vendored shadercross |
 | `Sources/Bielik2DDemo/` | Runnable example (macOS) |
