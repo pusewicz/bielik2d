@@ -28,6 +28,12 @@ public final class Batcher {
 
     public init() {}
 
+    /// Reserve enough storage for `n` vertices up front so subsequent emits
+    /// never trigger a reallocation. Cheap to call repeatedly with the same n.
+    public func reserveVertexCapacity(_ n: Int) {
+        vertices.reserveCapacity(n)
+    }
+
     public var commands: [DrawCommand] {
         var out = closedCommands
         let count = vertices.count - currentStart

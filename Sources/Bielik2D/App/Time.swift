@@ -35,6 +35,15 @@ public struct FrameTimer {
         let avg = averageFrameSeconds
         return avg > 0 ? 1.0 / avg : 0
     }
+
+    /// The longest frame in the current window. Useful for spotting stutter that
+    /// the average hides.
+    public var maxFrameSeconds: Double {
+        guard count > 0 else { return 0 }
+        var m = 0.0
+        for i in 0..<count where samples[i] > m { m = samples[i] }
+        return m
+    }
 }
 
 /// Wraps `SDL_GetPerformanceCounter` so callers can pull frame deltas in seconds.

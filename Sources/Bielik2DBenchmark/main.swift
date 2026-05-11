@@ -43,12 +43,19 @@ player.scale = SIMD2(spriteScale, spriteScale)
 let textEngine = try TextEngine(on: app.gpu)
 let font = try Font(path: "/System/Library/Fonts/Geneva.ttf", ptSize: 20)
 
-// Vertex buffer sized for the maximum entity count we'll ever spawn.
-let vertexBufferSize = maxEntityCount * 6 * MemoryLayout<Vertex>.stride
+// Vertex buffer sized for the maximum entity count we'll ever spawn, plus
+// headroom for HUD glyph vertices (~6 verts per character × any line we draw).
+// Without this slack, frames that hit `maxEntityCount` overflow the transfer
+// buffer by the HUD's worth of bytes and crash inside memmove.
+let hudVertexSlack = 8_192
+let vertexCapacity = maxEntityCount * 6 + hudVertexSlack
+let vertexBufferSize = vertexCapacity * MemoryLayout<Vertex>.stride
 let vbuf = try app.gpu.makeBuffer(size: vertexBufferSize, usage: .vertex)
 let vxfer = try app.gpu.makeTransferBuffer(size: vertexBufferSize, usage: .upload)
 
 let batcher = Batcher()
+// Reserve the full peak-frame capacity once, so vertex appends never reallocate.
+batcher.reserveVertexCapacity(vertexCapacity)
 let draw = Draw(batcher: batcher, textEngine: textEngine)
 let camera = Camera(viewportSize: windowSize)
 
@@ -94,6 +101,28 @@ let clock = Clock()
 _ = clock.tickSeconds()           // burn the startup spike
 var frameTimer = FrameTimer(windowSize: 120)
 
+// Per-section timers — nanoseconds since boot via mach_absolute_time.
+// All four blocks run every frame; we average over `profileWindow` frames
+// and print to stdout so we can see which section dominates.
+let timebase: (numer: UInt64, denom: UInt64) = {
+    var info = mach_timebase_info()
+    mach_timebase_info(&info)
+    return (UInt64(info.numer), UInt64(info.denom))
+}()
+@inline(__always) func nowNs() -> UInt64 {
+    return mach_absolute_time() * timebase.numer / timebase.denom
+}
+let profileWindow = 60
+var profileFrames = 0
+var sumUpdateNs: UInt64 = 0
+var sumBatchNs: UInt64 = 0
+var sumUploadNs: UInt64 = 0
+var sumSubmitNs: UInt64 = 0
+var maxUpdateNs: UInt64 = 0
+var maxBatchNs: UInt64 = 0
+var maxUploadNs: UInt64 = 0
+var maxSubmitNs: UInt64 = 0
+
 while app.isRunning {
     app.update()
     if app.keyJustPressed(SDL_SCANCODE_SPACE) {
@@ -124,16 +153,21 @@ while app.isRunning {
         lo = SIMD2(0, 0)
         hi = SIMD2(windowSize.x - spriteW, windowSize.y - spriteH)
     }
-    for i in entities.indices {
-        var e = entities[i]
-        e.pos += e.vel * dtF
-        if e.pos.x < lo.x { e.pos.x = lo.x; e.vel.x = -e.vel.x }
-        if e.pos.x > hi.x { e.pos.x = hi.x; e.vel.x = -e.vel.x }
-        if e.pos.y < lo.y { e.pos.y = lo.y; e.vel.y = -e.vel.y }
-        if e.pos.y > hi.y { e.pos.y = hi.y; e.vel.y = -e.vel.y }
-        entities[i] = e
+    let tUpdate0 = nowNs()
+    entities.withUnsafeMutableBufferPointer { buf in
+        for i in 0..<buf.count {
+            var e = buf[i]
+            e.pos += e.vel * dtF
+            if e.pos.x < lo.x { e.pos.x = lo.x; e.vel.x = -e.vel.x }
+            if e.pos.x > hi.x { e.pos.x = hi.x; e.vel.x = -e.vel.x }
+            if e.pos.y < lo.y { e.pos.y = lo.y; e.vel.y = -e.vel.y }
+            if e.pos.y > hi.y { e.pos.y = hi.y; e.vel.y = -e.vel.y }
+            buf[i] = e
+        }
     }
+    let tUpdate1 = nowNs()
 
+    let tBatch0 = nowNs()
     batcher.reset()
     switch mode {
     case .shapes:
@@ -149,12 +183,14 @@ while app.isRunning {
 
     // HUD overlay.
     let avgMs = frameTimer.averageFrameSeconds * 1000.0
+    let maxMs = frameTimer.maxFrameSeconds * 1000.0
     let fps = frameTimer.fps
-    let label = String(format: "%.0f fps  %.2f ms  %d %@  [Space swap, +/- ±%d]",
-                       fps, avgMs, entities.count,
+    let label = String(format: "%.0f fps  %.2f ms (peak %.2f)  %d %@  [Space swap, +/- ±%d]",
+                       fps, avgMs, maxMs, entities.count,
                        mode == .shapes ? "shapes" : "sprites",
                        countStep)
     draw.text(label, font: font, at: SIMD2(20, 28), color: .white)
+    let tBatch1 = nowNs()
 
     let cmd = try app.gpu.acquireCommandBuffer()
     guard let swap = cmd.acquireSwapchainTexture(for: window, device: app.gpu) else {
@@ -162,7 +198,11 @@ while app.isRunning {
         continue
     }
 
+    let tUpload0 = nowNs()
     let vertexBytes = batcher.vertices.count * MemoryLayout<Vertex>.stride
+    if vertexBytes > vxfer.size {
+        fatalError("vertex bytes \(vertexBytes) exceed transfer buffer \(vxfer.size); raise hudVertexSlack or lower maxEntityCount")
+    }
     if vertexBytes > 0 {
         vxfer.withMappedMemory(cycle: true) { ptr in
             batcher.vertices.withUnsafeBytes { src in
@@ -173,9 +213,11 @@ while app.isRunning {
             copy.upload(from: vxfer, offset: 0, to: vbuf, offset: 0, size: vertexBytes)
         }
     }
+    let tUpload1 = nowNs()
 
     cmd.pushVertexUniform(camera.viewProjection)
 
+    let tSubmit0 = nowNs()
     cmd.withRenderPass(colorTarget: swap, clear: Color(r: 0.07, g: 0.09, b: 0.14)) { pass in
         guard !batcher.vertices.isEmpty else { return }
         pass.bind(pipe)
@@ -186,5 +228,29 @@ while app.isRunning {
         }
     }
     cmd.submit()
+    let tSubmit1 = nowNs()
+
+    let dU = tUpdate1 - tUpdate0
+    let dB = tBatch1 - tBatch0
+    let dUp = tUpload1 - tUpload0
+    let dS = tSubmit1 - tSubmit0
+    sumUpdateNs &+= dU; if dU > maxUpdateNs { maxUpdateNs = dU }
+    sumBatchNs  &+= dB; if dB > maxBatchNs  { maxBatchNs  = dB }
+    sumUploadNs &+= dUp; if dUp > maxUploadNs { maxUploadNs = dUp }
+    sumSubmitNs &+= dS; if dS > maxSubmitNs { maxSubmitNs = dS }
+    profileFrames += 1
+    if profileFrames >= profileWindow {
+        let n = Double(profileFrames)
+        func us(_ ns: UInt64) -> Double { Double(ns) / 1_000.0 }
+        print(String(format: "[%d ent] update %5.0fµs (peak %5.0f)  batch %5.0fµs (peak %5.0f)  upload %5.0fµs (peak %5.0f)  submit %5.0fµs (peak %5.0f)",
+                     entities.count,
+                     us(sumUpdateNs) / n, us(maxUpdateNs),
+                     us(sumBatchNs)  / n, us(maxBatchNs),
+                     us(sumUploadNs) / n, us(maxUploadNs),
+                     us(sumSubmitNs) / n, us(maxSubmitNs)))
+        profileFrames = 0
+        sumUpdateNs = 0; sumBatchNs = 0; sumUploadNs = 0; sumSubmitNs = 0
+        maxUpdateNs = 0; maxBatchNs = 0; maxUploadNs = 0; maxSubmitNs = 0
+    }
 }
 app.destroy()
