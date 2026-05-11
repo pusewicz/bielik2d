@@ -1,8 +1,7 @@
-// Unified-vertex pass-through. Reads the full CF-style vertex but for v0
-// only the pos, uv, color, alpha fields actually feed the fragment stage.
-// The remaining fields (radius, stroke, aa, type, fill, posH, attributes,
-// uvBounds) are still consumed as inputs so the vertex layout stays stable
-// for Phase 8 (SDF shapes).
+// Unified-vertex pass-through with SDF parameters forwarded to fragment.
+// Sprite path uses pos + uv + color. SDF paths additionally use type, radius,
+// stroke, aa, fill — all interpolated as constants across each quad since
+// every vertex of the same quad carries identical SDF parameters.
 
 struct VSInput {
     float2 pos        : POSITION0;
@@ -23,6 +22,11 @@ struct VSOutput {
     float4 position : SV_Position;
     float2 uv       : TEXCOORD0;
     float4 color    : COLOR0;
+    float  type     : TEXCOORD1;
+    float  radius   : TEXCOORD2;
+    float  stroke   : TEXCOORD3;
+    float  aa       : TEXCOORD4;
+    float  fill     : TEXCOORD5;
 };
 
 cbuffer CameraUBO : register(b0, space1) {
@@ -31,9 +35,13 @@ cbuffer CameraUBO : register(b0, space1) {
 
 VSOutput main(VSInput input) {
     VSOutput o;
-    float4 worldPos = float4(input.pos, 0.0, 1.0);
-    o.position = mul(viewProj, worldPos);
+    o.position = mul(viewProj, float4(input.pos, 0.0, 1.0));
     o.uv = input.uv;
     o.color = float4(input.color.rgb, input.color.a * input.alpha);
+    o.type = input.type;
+    o.radius = input.radius;
+    o.stroke = input.stroke;
+    o.aa = input.aa;
+    o.fill = input.fill;
     return o;
 }

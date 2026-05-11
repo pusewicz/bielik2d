@@ -60,6 +60,12 @@ public final class Batcher {
         )
     }
 
+    /// Appends a single raw vertex. Bypasses the convenience quad/UV helpers —
+    /// the caller is responsible for setting any SDF fields on the vertex.
+    public func append(_ vertex: Vertex) {
+        vertices.append(vertex)
+    }
+
     public func emitQuadCorners(p0: SIMD2<Float>, p1: SIMD2<Float>, p2: SIMD2<Float>, p3: SIMD2<Float>,
                                 uv: Rect, color: SIMD4<Float>) {
         let u0 = SIMD2<Float>(uv.minX, uv.minY)
