@@ -1,5 +1,9 @@
 import CSDL3
 
+/// SDL3's `SDL_WINDOW_HIGH_PIXEL_DENSITY` flag. The matching SDL macro uses
+/// `SDL_UINT64_C(...)` which Swift's importer can't fold into a constant.
+public let SDL_WINDOW_HIGH_PIXEL_DENSITY: SDL_WindowFlags = 0x2000
+
 public enum AppError: Error, CustomStringConvertible {
     case sdlInit(String)
     case createWindow(String)
@@ -22,7 +26,7 @@ public final class App {
         guard SDL_Init(SDL_INIT_VIDEO) else {
             throw AppError.sdlInit(lastSDLError())
         }
-        guard let win = SDL_CreateWindow(title, Int32(width), Int32(height), 0) else {
+        guard let win = SDL_CreateWindow(title, Int32(width), Int32(height), SDL_WINDOW_HIGH_PIXEL_DENSITY) else {
             SDL_Quit()
             throw AppError.createWindow(lastSDLError())
         }
