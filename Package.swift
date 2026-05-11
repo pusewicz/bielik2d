@@ -35,6 +35,7 @@ let package = Package(
         .testTarget(
             name: "Bielik2DTests",
             dependencies: ["Bielik2D", "CSDL3"],
+            resources: [.copy("fixtures")],
             linkerSettings: nativeLibPaths
         ),
         .executableTarget(
