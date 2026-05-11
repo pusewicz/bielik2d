@@ -9,8 +9,8 @@
 #
 #   2. The wasm SDK matching the toolchain:
 #          swift sdk install \
-#              https://download.swift.org/swift-6.3-release/wasm-sdk/swift-6.3-RELEASE/swift-6.3-RELEASE_wasm.artifactbundle.tar.gz \
-#              --checksum 9fa4016ee632c7e9e906608ec3b55cf13dfc4dff44e47574c5af58064dc33fd9
+#              https://download.swift.org/swift-6.3.1-release/wasm-sdk/swift-6.3.1-RELEASE/swift-6.3.1-RELEASE_wasm.artifactbundle.tar.gz \
+#              --checksum bd47baa20771f366d8beed7970afaa30742b2210097afd15f85427226d8f4cf2
 #      Note the SDK id from `swift sdk list` and override BIELIK2D_WASM_SDK if it
 #      differs from the default.
 #
@@ -21,7 +21,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-SDK_ID="${BIELIK2D_WASM_SDK:-swift-6.3-RELEASE_wasm}"
+SDK_ID="${BIELIK2D_WASM_SDK:-swift-6.3.1-RELEASE_wasm}"
 DIST=web/dist
 mkdir -p "$DIST"
 
