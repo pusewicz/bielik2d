@@ -10,8 +10,12 @@ let entityRadius: Float = 6
 let spriteScale: Float = 0.35
 
 let app = try App(title: "Bielik2D Benchmark", width: Int(windowSize.x), height: Int(windowSize.y))
+// Start in immediate so the benchmark measures peak throughput. Toggle with V.
+let presentModes: [PresentMode] = [.immediate, .vsync, .mailbox]
+let presentLabels = ["immediate", "vsync", "mailbox"]
+var presentIndex = 0
 if let window = app.window {
-    app.gpu.setSwapchainPresentMode(.immediate, for: window)   // no vsync — measure real cost
+    app.gpu.setSwapchainPresentMode(presentModes[presentIndex], for: window)
 }
 print("GPU driver: \(app.gpu.driverName)")
 
@@ -128,6 +132,12 @@ while app.isRunning {
     if app.keyJustPressed(SDL_SCANCODE_SPACE) {
         mode = (mode == .shapes) ? .sprites : .shapes
     }
+    if app.keyJustPressed(SDL_SCANCODE_V) {
+        presentIndex = (presentIndex + 1) % presentModes.count
+        if let window = app.window {
+            _ = app.gpu.setSwapchainPresentMode(presentModes[presentIndex], for: window)
+        }
+    }
     // '=' (unshifted '+') and the keypad '+' both grow the count.
     if app.keyJustPressed(SDL_SCANCODE_EQUALS) || app.keyJustPressed(SDL_SCANCODE_KP_PLUS) {
         adjustEntityCount(by: countStep)
@@ -185,9 +195,10 @@ while app.isRunning {
     let avgMs = frameTimer.averageFrameSeconds * 1000.0
     let maxMs = frameTimer.maxFrameSeconds * 1000.0
     let fps = frameTimer.fps
-    let label = String(format: "%.0f fps  %.2f ms (peak %.2f)  %d %@  [Space swap, +/- ±%d]",
+    let label = String(format: "%.0f fps  %.2f ms (peak %.2f)  %d %@  vsync:%@  [Space swap, V cycle vsync, +/- ±%d]",
                        fps, avgMs, maxMs, entities.count,
                        mode == .shapes ? "shapes" : "sprites",
+                       presentLabels[presentIndex],
                        countStep)
     draw.text(label, font: font, at: SIMD2(20, 28), color: .white)
     let tBatch1 = nowNs()
