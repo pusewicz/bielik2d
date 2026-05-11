@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: install homebrew deps
+        run: |
+          brew update
+          brew install sdl3 sdl3_image sdl3_ttf glslang spirv-cross spirv-tools spirv-headers
+
+      - name: build vendored SDL_shadercross
+        run: ./scripts/build-vendor.sh
+
+      - name: compile shaders
+        run: ./Shaders/build.sh
+
+      - name: swift build
+        run: swift build
+
+      - name: swift test
+        run: swift test

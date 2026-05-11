@@ -13,7 +13,7 @@ let nativeLibPaths: [LinkerSetting] = [
 
 let package = Package(
     name: "Bielik2D",
-    platforms: [.macOS(.v26)],
+    platforms: [.macOS(.v15)],
     products: [
         .library(name: "Bielik2D", targets: ["Bielik2D"]),
     ],
