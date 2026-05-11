@@ -9,12 +9,14 @@ private func apply(_ m: simd_float4x4, _ v: SIMD4<Float>) -> SIMD4<Float> {
 @Test func defaultCameraMapsScreenCornersToClipSpace() {
     let cam = Camera(viewportSize: SIMD2(1280, 720))
     let vp = cam.viewProjection
+    // World top-left (screen-style) → clip top-left in Metal NDC = (-1, +1).
     let topLeft = apply(vp, SIMD4(0, 0, 0, 1))
     #expect(abs(topLeft.x + 1) < 1e-5)
-    #expect(abs(topLeft.y + 1) < 1e-5)
+    #expect(abs(topLeft.y - 1) < 1e-5)
+    // World bottom-right → clip bottom-right = (+1, -1).
     let bottomRight = apply(vp, SIMD4(1280, 720, 0, 1))
     #expect(abs(bottomRight.x - 1) < 1e-5)
-    #expect(abs(bottomRight.y - 1) < 1e-5)
+    #expect(abs(bottomRight.y + 1) < 1e-5)
 }
 
 @Test func movingCameraShiftsWorldOpposite() {

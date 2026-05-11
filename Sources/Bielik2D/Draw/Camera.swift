@@ -14,15 +14,18 @@ public struct Camera {
         self.view = view
     }
 
-    /// Maps (0,0) → (-1,-1) and (viewportSize) → (+1,+1).
+    /// Maps screen-style world coords (origin top-left, +Y down) to SDL_GPU's
+    /// clip space, which behaves like Metal's NDC here: +Y is **up**, so we
+    /// need to flip Y in projection. World (0,0) → clip(-1, +1) → top-left,
+    /// world (viewportSize) → clip(+1, -1) → bottom-right.
     public var projection: simd_float4x4 {
         let w = viewportSize.x
         let h = viewportSize.y
         return simd_float4x4(
-            SIMD4(2 / w, 0, 0, 0),
-            SIMD4(0, 2 / h, 0, 0),
-            SIMD4(0, 0, 1, 0),
-            SIMD4(-1, -1, 0, 1)
+            SIMD4( 2 / w,   0,    0, 0),
+            SIMD4( 0,      -2 / h, 0, 0),
+            SIMD4( 0,       0,    1, 0),
+            SIMD4(-1,       1,    0, 1)
         )
     }
 
