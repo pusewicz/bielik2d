@@ -3,7 +3,9 @@ import CSDL3
 import Foundation
 
 let windowSize = SIMD2<Float>(1280, 720)
-let entityCount = 10_000
+let initialEntityCount = 10_000
+let maxEntityCount = 100_000
+let countStep = 2_000
 let entityRadius: Float = 6
 let spriteScale: Float = 0.35
 
@@ -41,9 +43,8 @@ player.scale = SIMD2(spriteScale, spriteScale)
 let textEngine = try TextEngine(on: app.gpu)
 let font = try Font(path: "/System/Library/Fonts/Geneva.ttf", ptSize: 20)
 
-// Vertex buffer sized for entityCount × 6 verts.
-let maxVertexCount = entityCount * 6
-let vertexBufferSize = maxVertexCount * MemoryLayout<Vertex>.stride
+// Vertex buffer sized for the maximum entity count we'll ever spawn.
+let vertexBufferSize = maxEntityCount * 6 * MemoryLayout<Vertex>.stride
 let vbuf = try app.gpu.makeBuffer(size: vertexBufferSize, usage: .vertex)
 let vxfer = try app.gpu.makeTransferBuffer(size: vertexBufferSize, usage: .upload)
 
@@ -63,7 +64,7 @@ struct Entity {
 let spriteW = Float(player.width) * spriteScale
 let spriteH = Float(player.height) * spriteScale
 
-var entities: [Entity] = (0..<entityCount).map { _ in
+func makeEntity() -> Entity {
     Entity(
         pos: SIMD2(Float.random(in: spriteW...windowSize.x - spriteW),
                    Float.random(in: spriteH...windowSize.y - spriteH)),
@@ -74,6 +75,21 @@ var entities: [Entity] = (0..<entityCount).map { _ in
     )
 }
 
+var entities: [Entity] = (0..<initialEntityCount).map { _ in makeEntity() }
+
+@MainActor
+func adjustEntityCount(by delta: Int) {
+    let target = max(0, min(maxEntityCount, entities.count + delta))
+    if target > entities.count {
+        entities.reserveCapacity(target)
+        for _ in 0..<(target - entities.count) {
+            entities.append(makeEntity())
+        }
+    } else if target < entities.count {
+        entities.removeLast(entities.count - target)
+    }
+}
+
 let clock = Clock()
 _ = clock.tickSeconds()           // burn the startup spike
 var frameTimer = FrameTimer(windowSize: 120)
@@ -82,6 +98,14 @@ while app.isRunning {
     app.update()
     if app.keyJustPressed(SDL_SCANCODE_SPACE) {
         mode = (mode == .shapes) ? .sprites : .shapes
+    }
+    // '=' (unshifted '+') and the keypad '+' both grow the count.
+    if app.keyJustPressed(SDL_SCANCODE_EQUALS) || app.keyJustPressed(SDL_SCANCODE_KP_PLUS) {
+        adjustEntityCount(by: countStep)
+    }
+    // '-' and the keypad '-' shrink it.
+    if app.keyJustPressed(SDL_SCANCODE_MINUS) || app.keyJustPressed(SDL_SCANCODE_KP_MINUS) {
+        adjustEntityCount(by: -countStep)
     }
     guard let window = app.window else { break }
 
@@ -126,9 +150,10 @@ while app.isRunning {
     // HUD overlay.
     let avgMs = frameTimer.averageFrameSeconds * 1000.0
     let fps = frameTimer.fps
-    let label = String(format: "%.0f fps  %.2f ms  %d %@  [Space to swap]",
-                       fps, avgMs, entityCount,
-                       mode == .shapes ? "shapes" : "sprites")
+    let label = String(format: "%.0f fps  %.2f ms  %d %@  [Space swap, +/- ±%d]",
+                       fps, avgMs, entities.count,
+                       mode == .shapes ? "shapes" : "sprites",
+                       countStep)
     draw.text(label, font: font, at: SIMD2(20, 28), color: .white)
 
     let cmd = try app.gpu.acquireCommandBuffer()
