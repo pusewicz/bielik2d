@@ -33,8 +33,11 @@ let vertexBufferSize = maxVertexCount * MemoryLayout<Vertex>.stride
 let vbuf = try app.gpu.makeBuffer(size: vertexBufferSize, usage: .vertex)
 let vxfer = try app.gpu.makeTransferBuffer(size: vertexBufferSize, usage: .upload)
 
+let textEngine = try TextEngine(on: app.gpu)
+let font = try Font(path: "/System/Library/Fonts/Geneva.ttf", ptSize: 28)
+
 let batcher = Batcher()
-let draw = Draw(batcher: batcher)
+let draw = Draw(batcher: batcher, textEngine: textEngine)
 let camera = Camera(viewportSize: windowSize)
 let startTime = Date()
 
@@ -63,6 +66,7 @@ while app.isRunning {
                     color: Color(r: 0.4, g: 0.8, b: 1.0))
     draw.line(from: center + SIMD2(-300, -150), to: center + SIMD2(-300, 150),
               thickness: 8, color: Color(r: 1.0, g: 0.9, b: 0.3))
+    draw.text("Hello, Bielik!", font: font, at: SIMD2<Float>(40, 40), color: .white)
 
     let cmd = try app.gpu.acquireCommandBuffer()
     guard let swap = cmd.acquireSwapchainTexture(for: window, device: app.gpu) else {
