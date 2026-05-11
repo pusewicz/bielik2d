@@ -40,15 +40,21 @@ One-time setup (installs `swiftly`, the Swift 6.3.1 toolchain, and the wasm SDK;
 ./scripts/install-wasm-sdk.sh
 ```
 
-Build and serve:
+Build and serve in one step:
 
 ```sh
 ./Shaders/build.sh         # compiles HLSL → SPIR-V and emits WGSL via naga
+./scripts/start-web.sh     # build-web.sh + python http.server + opens the page
+```
+
+Or split the steps for tighter iteration:
+
+```sh
 ./scripts/build-web.sh     # cross-compiles to wasm32 via PackageToJS plugin
 python3 -m http.server -d web/dist
 ```
 
-Then open `http://localhost:8000` in Chrome or another WebGPU-capable browser. The web demo shows a sprite, a filled SDF circle, an SDF line, and a "Hello, Bielik!" label — the same scene as the macOS demo. Override `BIELIK2D_WASM_SDK` if `swift sdk list` reports a different SDK id.
+`scripts/start-web.sh` defaults to port 8000 — override with `PORT=9000 ./scripts/start-web.sh`. The demo runs in any WebGPU-capable browser (Chrome / Edge / Safari 18.2+). The web demo shows a sprite, a filled SDF circle, an SDF line, and a "Hello, Bielik!" label — the same scene as the macOS demo. Override `BIELIK2D_WASM_SDK` if `swift sdk list` reports a different SDK id.
 
 The host HTML uses an import map to resolve the `@bjorn3/browser_wasi_shim` bare specifier the PackageToJS plugin emits — no bundler required, just a static server.
 
