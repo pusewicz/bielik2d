@@ -41,6 +41,7 @@ let package = Package(
         .executableTarget(
             name: "Bielik2DDemo",
             dependencies: ["Bielik2D"],
+            resources: [.copy("assets")],
             linkerSettings: nativeLibPaths
         ),
     ]

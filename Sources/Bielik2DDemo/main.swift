@@ -26,7 +26,11 @@ do {
     init0.submit()
     pixelXfer.destroy()
 }
-let sampler = try app.gpu.makeSampler(filter: .nearest)
+let sampler = try app.gpu.makeSampler(filter: .linear)
+
+// PNG asset shipped with the demo (Kenney, CC0).
+let playerPath = Bundle.module.url(forResource: "p1_stand", withExtension: "png", subdirectory: "assets")!.path
+let player = try Sprite(png: playerPath, on: app.gpu)
 
 let maxVertexCount = 6 * 1024
 let vertexBufferSize = maxVertexCount * MemoryLayout<Vertex>.stride
@@ -67,6 +71,10 @@ while app.isRunning {
     draw.line(from: center + SIMD2(-300, -150), to: center + SIMD2(-300, 150),
               thickness: 8, color: Color(r: 1.0, g: 0.9, b: 0.3))
     draw.text("Hello, Bielik!", font: font, at: SIMD2<Float>(40, 40), color: .white)
+
+    // PNG sprite bouncing along the bottom.
+    let bounce: Float = abs(sin(t * 2)) * 60
+    draw.sprite(player, at: SIMD2<Float>(120, windowSize.y - 150 - bounce))
 
     let cmd = try app.gpu.acquireCommandBuffer()
     guard let swap = cmd.acquireSwapchainTexture(for: window, device: app.gpu) else {
