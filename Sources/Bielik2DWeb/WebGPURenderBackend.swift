@@ -121,6 +121,33 @@ public final class WebGPURenderBackend {
         _ = queue.submit!(submitList)
     }
 
+    /// Wraps an already-decoded `ImageBitmap` in a fresh RGBA8 GPU texture.
+    /// Uses `queue.copyExternalImageToTexture` for a zero-CPU upload.
+    /// Returns `(texture, width, height)`.
+    public func makeTexture(from bitmap: JSObject) -> (JSObject, Int, Int) {
+        let width = Int(bitmap["width"].number ?? 0)
+        let height = Int(bitmap["height"].number ?? 0)
+        let texture = device.createTexture!(WebJS.object([
+            "size": .object(WebJS.object([
+                "width": .number(Double(width)),
+                "height": .number(Double(height)),
+                "depthOrArrayLayers": .number(1),
+            ])),
+            "format": .string("rgba8unorm"),
+            // RENDER_ATTACHMENT is required by copyExternalImageToTexture.
+            "usage": .number(Double(0x04 | 0x02 | 0x10)),
+        ])).object!
+        _ = queue.copyExternalImageToTexture!(
+            WebJS.object(["source": .object(bitmap)]),
+            WebJS.object(["texture": .object(texture)]),
+            WebJS.object([
+                "width": .number(Double(width)),
+                "height": .number(Double(height)),
+            ])
+        )
+        return (texture, width, height)
+    }
+
     /// Fetches a WGSL source by relative URL (typically `shaders/<name>.wgsl`)
     /// and turns it into a `GPUShaderModule`.
     public func loadShaderModule(url: String) async throws -> JSObject {

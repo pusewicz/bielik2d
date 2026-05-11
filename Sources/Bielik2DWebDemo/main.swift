@@ -92,30 +92,9 @@ func runDemo() async throws {
         _ = backend.queue.writeBuffer!(uniformBuffer, 0, JSTypedArray<UInt8>(bytes).jsObject)
     }
 
-    // 1×1 white texture.
-    let texture = backend.device.createTexture!(WebJS.object([
-        "size": .object(WebJS.object([
-            "width": .number(1),
-            "height": .number(1),
-            "depthOrArrayLayers": .number(1),
-        ])),
-        "format": .string("rgba8unorm"),
-        "usage": .number(Double(GPUTextureUsage.textureBinding | GPUTextureUsage.copyDst)),
-    ])).object!
-    let whitePixel: [UInt8] = [255, 255, 255, 255]
-    _ = backend.queue.writeTexture!(
-        WebJS.object(["texture": .object(texture)]),
-        JSTypedArray<UInt8>(whitePixel).jsObject,
-        WebJS.object([
-            "bytesPerRow": .number(4),
-            "rowsPerImage": .number(1),
-        ]),
-        WebJS.object([
-            "width": .number(1),
-            "height": .number(1),
-            "depthOrArrayLayers": .number(1),
-        ])
-    )
+    // Sprite texture from a fetched PNG.
+    let bitmap = try await WebAssetLoader.loadImageBitmap(url: "assets/p1_stand.png")
+    let (texture, spriteW, spriteH) = backend.makeTexture(from: bitmap)
 
     let sampler = backend.device.createSampler!(WebJS.object([
         "magFilter": .string("linear"),
@@ -148,12 +127,12 @@ func runDemo() async throws {
         ])),
     ])).object!
 
-    // One quad in screen-space pixels.
+    // One quad at the sprite's native pixel size, centred on the canvas.
     let white = SIMD4<Float>(1, 1, 1, 1)
     let cx = Float(platform.size.x) * 0.5
     let cy = Float(platform.size.y) * 0.5
-    let halfW: Float = 200
-    let halfH: Float = 150
+    let halfW = Float(spriteW) * 0.5
+    let halfH = Float(spriteH) * 0.5
     let verts: [Vertex] = [
         Vertex(pos: SIMD2(cx - halfW, cy - halfH), uv: SIMD2(0, 0), color: white),
         Vertex(pos: SIMD2(cx + halfW, cy - halfH), uv: SIMD2(1, 0), color: white),

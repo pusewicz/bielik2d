@@ -58,6 +58,10 @@ echo "==> copying shader resources"
 mkdir -p "$DIST/shaders"
 cp Sources/Bielik2D/Resources/shaders/*.wgsl "$DIST/shaders/"
 
+echo "==> copying demo assets"
+mkdir -p "$DIST/assets"
+cp Sources/Bielik2DDemo/assets/* "$DIST/assets/"
+
 echo "==> installing host page"
 cp web/index.html "$DIST/index.html"
 
