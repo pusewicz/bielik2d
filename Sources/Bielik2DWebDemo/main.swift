@@ -139,6 +139,45 @@ func runDemo() async throws {
     batcher.reserveVertexCapacity(maxVertexCount)
     let draw = Draw(batcher: batcher)
 
+    // Pre-rasterise the static label and build a matching bind group + quad.
+    let label = WebTextRasterizer.rasterize("Hello, Bielik!", fontCSS: "32px -apple-system, sans-serif")!
+    let (labelTexture, labelW, labelH) = backend.makeTexture(from: label.canvas)
+    let labelBindGroup = backend.device.createBindGroup!(WebJS.object([
+        "layout": .object(bgl1),
+        "entries": .object(WebJS.array([
+            WebJS.object([
+                "binding": .number(0),
+                "resource": .object(labelTexture.createView!().object!),
+            ]),
+            WebJS.object([
+                "binding": .number(1),
+                "resource": .object(sampler),
+            ]),
+        ])),
+    ])).object!
+    let labelOrigin = SIMD2<Float>(40, 40)
+    let labelVerts: [Vertex] = {
+        let w = Float(labelW), h = Float(labelH)
+        let c = SIMD4<Float>(1, 1, 1, 1)
+        return [
+            Vertex(pos: SIMD2(labelOrigin.x,     labelOrigin.y    ), uv: SIMD2(0, 0), color: c),
+            Vertex(pos: SIMD2(labelOrigin.x + w, labelOrigin.y    ), uv: SIMD2(1, 0), color: c),
+            Vertex(pos: SIMD2(labelOrigin.x + w, labelOrigin.y + h), uv: SIMD2(1, 1), color: c),
+            Vertex(pos: SIMD2(labelOrigin.x,     labelOrigin.y    ), uv: SIMD2(0, 0), color: c),
+            Vertex(pos: SIMD2(labelOrigin.x + w, labelOrigin.y + h), uv: SIMD2(1, 1), color: c),
+            Vertex(pos: SIMD2(labelOrigin.x,     labelOrigin.y + h), uv: SIMD2(0, 1), color: c),
+        ]
+    }()
+    let labelBuffer = backend.device.createBuffer!(WebJS.object([
+        "size": .number(Double(labelVerts.count * MemoryLayout<Vertex>.stride)),
+        "usage": .number(Double(GPUBufferUsage.vertex | GPUBufferUsage.copyDst)),
+    ])).object!
+    labelVerts.withUnsafeBytes { ptr in
+        let bytes = Array(ptr.bindMemory(to: UInt8.self))
+        _ = backend.queue.writeBuffer!(labelBuffer, 0, JSTypedArray<UInt8>(bytes).jsObject)
+    }
+    let labelVertexCount = labelVerts.count
+
     DemoState.pipeline = pipeline
     DemoState.vertexBuffer = vertexBuffer
     DemoState.bindGroup0 = bindGroup0
@@ -188,9 +227,14 @@ func runDemo() async throws {
         backend.frame(clear: clear) { pass in
             _ = pass.setPipeline!(pipeline)
             _ = pass.setBindGroup!(0, bindGroup0)
+            // Sprite + SDF batch.
             _ = pass.setBindGroup!(1, bindGroup1)
             _ = pass.setVertexBuffer!(0, vertexBuffer)
             _ = pass.draw!(vertexCount)
+            // Label.
+            _ = pass.setBindGroup!(1, labelBindGroup)
+            _ = pass.setVertexBuffer!(0, labelBuffer)
+            _ = pass.draw!(labelVertexCount)
         }
     }
 }
