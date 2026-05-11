@@ -23,29 +23,21 @@ public struct Sprite: Equatable {
     public var opacity: Float
 
     public init(png path: String, on device: GPUDevice) throws {
-        guard let surface = IMG_Load(path) else {
-            throw SpriteError.loadFailed(lastSDLError())
-        }
-        defer { SDL_DestroySurface(surface) }
+        let image = try SDL3AssetLoader.loadImage(path: path)
+        try self.init(image: image, on: device)
+    }
 
-        // Force RGBA8 for predictability.
-        let rgba = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32)
-        guard let rgba else {
-            throw SpriteError.loadFailed(lastSDLError())
-        }
-        defer { SDL_DestroySurface(rgba) }
-
-        let w = Int(rgba.pointee.w)
-        let h = Int(rgba.pointee.h)
-        let pitch = Int(rgba.pointee.pitch)
-        let byteCount = pitch * h
-        let pixelsPtr = rgba.pointee.pixels
-
+    public init(image: ImageBytes, on device: GPUDevice) throws {
+        let w = image.width
+        let h = image.height
+        let byteCount = image.pixels.count
         let tex = try device.makeTexture(width: w, height: h, format: .rgba8Unorm, usage: .sampler)
         let xfer = try device.makeTransferBuffer(size: byteCount, usage: .upload)
         defer { xfer.destroy() }
         xfer.withMappedMemory { dst in
-            dst.copyMemory(from: pixelsPtr!, byteCount: byteCount)
+            image.pixels.withUnsafeBytes { src in
+                dst.copyMemory(from: src.baseAddress!, byteCount: byteCount)
+            }
         }
         let cmd = try device.acquireCommandBuffer()
         cmd.withCopyPass { copy in
