@@ -127,28 +127,17 @@ func runDemo() async throws {
         ])),
     ])).object!
 
-    // One quad at the sprite's native pixel size, centred on the canvas.
-    let white = SIMD4<Float>(1, 1, 1, 1)
-    let cx = Float(platform.size.x) * 0.5
-    let cy = Float(platform.size.y) * 0.5
-    let halfW = Float(spriteW) * 0.5
-    let halfH = Float(spriteH) * 0.5
-    let verts: [Vertex] = [
-        Vertex(pos: SIMD2(cx - halfW, cy - halfH), uv: SIMD2(0, 0), color: white),
-        Vertex(pos: SIMD2(cx + halfW, cy - halfH), uv: SIMD2(1, 0), color: white),
-        Vertex(pos: SIMD2(cx + halfW, cy + halfH), uv: SIMD2(1, 1), color: white),
-        Vertex(pos: SIMD2(cx - halfW, cy - halfH), uv: SIMD2(0, 0), color: white),
-        Vertex(pos: SIMD2(cx + halfW, cy + halfH), uv: SIMD2(1, 1), color: white),
-        Vertex(pos: SIMD2(cx - halfW, cy + halfH), uv: SIMD2(0, 1), color: white),
-    ]
+    // Vertex buffer sized for a comfortable per-frame upper bound. Bielik2D's
+    // Batcher resets in place each frame so allocations don't churn.
+    let maxVertexCount = 6 * 1024
     let vertexBuffer = backend.device.createBuffer!(WebJS.object([
-        "size": .number(Double(verts.count * MemoryLayout<Vertex>.stride)),
+        "size": .number(Double(maxVertexCount * MemoryLayout<Vertex>.stride)),
         "usage": .number(Double(GPUBufferUsage.vertex | GPUBufferUsage.copyDst)),
     ])).object!
-    verts.withUnsafeBytes { ptr in
-        let bytes = Array(ptr.bindMemory(to: UInt8.self))
-        _ = backend.queue.writeBuffer!(vertexBuffer, 0, JSTypedArray<UInt8>(bytes).jsObject)
-    }
+
+    let batcher = Batcher()
+    batcher.reserveVertexCapacity(maxVertexCount)
+    let draw = Draw(batcher: batcher)
 
     DemoState.pipeline = pipeline
     DemoState.vertexBuffer = vertexBuffer
@@ -156,8 +145,46 @@ func runDemo() async throws {
     DemoState.bindGroup1 = bindGroup1
 
     let clear = ClearColor(r: 0.10, g: 0.12, b: 0.18, a: 1.0)
-    let vertexCount = verts.count
+    let cx = Float(platform.size.x) * 0.5
+    let cy = Float(platform.size.y) * 0.5
+    let halfW = Float(spriteW) * 0.5
+    let halfH = Float(spriteH) * 0.5
+    let white = SIMD4<Float>(1, 1, 1, 1)
+    let spriteUV = Rect(x: 0, y: 0, width: 1, height: 1)
+
     platform.run { _ in
+        batcher.reset()
+
+        // Sprite (textured quad, shape=0 by Vertex default).
+        batcher.emitQuad(
+            rect: Rect(x: cx - halfW, y: cy - halfH, width: halfW * 2, height: halfH * 2),
+            uv: spriteUV,
+            color: white
+        )
+
+        // SDF circle to the right of the sprite.
+        draw.circleFill(
+            center: SIMD2(cx + halfW + 120, cy),
+            radius: 60,
+            color: Color(r: 0.4, g: 0.8, b: 1.0)
+        )
+
+        // SDF line below the sprite.
+        draw.line(
+            from: SIMD2(cx - 220, cy + halfH + 80),
+            to: SIMD2(cx + 220, cy + halfH + 80),
+            thickness: 8,
+            color: Color(r: 1.0, g: 0.9, b: 0.3)
+        )
+
+        let vertexCount = batcher.vertices.count
+        if vertexCount > 0 && vertexCount <= maxVertexCount {
+            batcher.vertices.withUnsafeBytes { ptr in
+                let bytes = Array(ptr.bindMemory(to: UInt8.self))
+                _ = backend.queue.writeBuffer!(vertexBuffer, 0, JSTypedArray<UInt8>(bytes).jsObject)
+            }
+        }
+
         backend.frame(clear: clear) { pass in
             _ = pass.setPipeline!(pipeline)
             _ = pass.setBindGroup!(0, bindGroup0)
