@@ -54,4 +54,20 @@ struct SDLBoundTests {
         app.update()
         #expect(!app.isRunning)
     }
+
+    @Test func keyDownEventRegistersAsJustPressed() throws {
+        let app = try App(title: "key test", width: 320, height: 200)
+        defer { app.destroy() }
+        var ev = SDL_Event()
+        ev.type = SDL_EVENT_KEY_DOWN.rawValue
+        ev.key.scancode = SDL_SCANCODE_SPACE
+        ev.key.down = true
+        ev.key.repeat = false
+        _ = SDL_PushEvent(&ev)
+        app.update()
+        #expect(app.keyJustPressed(SDL_SCANCODE_SPACE))
+        // a second update without a new event clears the just-pressed flag
+        app.update()
+        #expect(!app.keyJustPressed(SDL_SCANCODE_SPACE))
+    }
 }

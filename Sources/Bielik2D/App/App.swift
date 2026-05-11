@@ -16,6 +16,7 @@ public final class App {
     public private(set) var isRunning: Bool = false
     public let gpu: GPUDevice
     public private(set) var window: OpaquePointer?
+    private var keysJustPressed: Set<UInt32> = []
 
     public init(title: String, width: Int, height: Int) throws {
         guard SDL_Init(SDL_INIT_VIDEO) else {
@@ -38,17 +39,25 @@ public final class App {
     }
 
     public func update() {
+        keysJustPressed.removeAll(keepingCapacity: true)
         var ev = SDL_Event()
         while SDL_PollEvent(&ev) {
             switch SDL_EventType(rawValue: ev.type) {
-            case SDL_EVENT_QUIT:
+            case SDL_EVENT_QUIT, SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                 isRunning = false
-            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-                isRunning = false
+            case SDL_EVENT_KEY_DOWN:
+                if !ev.key.repeat {
+                    keysJustPressed.insert(ev.key.scancode.rawValue)
+                }
             default:
                 break
             }
         }
+    }
+
+    /// Returns true exactly on the frame the key transitioned from up to down.
+    public func keyJustPressed(_ scancode: SDL_Scancode) -> Bool {
+        keysJustPressed.contains(scancode.rawValue)
     }
 
     public func destroy() {
