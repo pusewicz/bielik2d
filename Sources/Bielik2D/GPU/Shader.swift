@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 import CSDL3Shadercross
 import Foundation
@@ -88,3 +89,4 @@ extension Shader {
         }
     }
 }
+#endif

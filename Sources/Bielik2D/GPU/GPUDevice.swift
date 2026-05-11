@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public enum PresentMode: Sendable {
@@ -90,3 +91,4 @@ func lastSDLError() -> String {
     guard let cstr = SDL_GetError() else { return "(no error message)" }
     return String(cString: cstr)
 }
+#endif

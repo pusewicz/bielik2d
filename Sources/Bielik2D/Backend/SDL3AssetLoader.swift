@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 import Foundation
 
@@ -35,3 +36,4 @@ public enum SDL3AssetLoader {
         return ImageBytes(width: w, height: h, pixels: dst as Data)
     }
 }
+#endif

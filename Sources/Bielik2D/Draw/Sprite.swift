@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 import Foundation
 
@@ -75,3 +76,4 @@ extension Draw {
         quad(rect: rect, uv: uv, color: color)
     }
 }
+#endif

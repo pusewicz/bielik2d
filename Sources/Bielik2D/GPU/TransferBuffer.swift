@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public enum TransferBufferUsage {
@@ -39,3 +40,4 @@ extension GPUDevice {
         return TransferBuffer(handle: buf, size: size, device: handle)
     }
 }
+#endif

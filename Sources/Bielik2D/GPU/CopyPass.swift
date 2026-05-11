@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public struct CopyPass {
@@ -24,3 +25,4 @@ extension CommandBuffer {
         SDL_EndGPUCopyPass(pass)
     }
 }
+#endif

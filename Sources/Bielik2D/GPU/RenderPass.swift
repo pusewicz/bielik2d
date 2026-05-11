@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public struct RenderPass {
@@ -53,3 +54,4 @@ extension CommandBuffer {
         SDL_EndGPURenderPass(pass)
     }
 }
+#endif

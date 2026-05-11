@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public struct CommandBuffer {
@@ -44,3 +45,4 @@ extension GPUDevice {
         return CommandBuffer(handle: cmd)
     }
 }
+#endif

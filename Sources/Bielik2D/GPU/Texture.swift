@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public enum TextureFormat: Sendable {
@@ -79,3 +80,4 @@ extension CopyPass {
         SDL_UploadToGPUTexture(handle, &srcInfo, &dstRegion, cycle)
     }
 }
+#endif

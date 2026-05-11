@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public struct BufferUsage: OptionSet, Sendable {
@@ -33,3 +34,4 @@ extension GPUDevice {
         return Buffer(handle: buf, size: size, device: handle)
     }
 }
+#endif

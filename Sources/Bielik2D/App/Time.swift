@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 /// Rolling-window FPS / frame-time tracker. Pure data — feed it deltas with
@@ -64,3 +65,4 @@ public final class Clock {
         return delta
     }
 }
+#endif

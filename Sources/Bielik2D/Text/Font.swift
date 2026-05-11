@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 import Foundation
 
@@ -64,3 +65,4 @@ public struct TextEngine {
         TTF_DestroyGPUTextEngine(handle)
     }
 }
+#endif

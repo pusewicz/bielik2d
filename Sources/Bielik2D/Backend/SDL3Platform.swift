@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 /// Owns the SDL3 process-global state (init, window, event pump) so `App`
@@ -54,3 +55,4 @@ public final class SDL3Platform {
         SDL_Quit()
     }
 }
+#endif

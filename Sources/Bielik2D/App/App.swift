@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public enum AppError: Error, CustomStringConvertible {
@@ -54,3 +55,4 @@ public final class App {
         }
     }
 }
+#endif

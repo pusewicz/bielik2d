@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 /// A cached `TTF_Text` handle. Use this when the same text engine + font is
@@ -100,3 +101,4 @@ extension Draw {
         }
     }
 }
+#endif

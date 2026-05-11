@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public enum VertexFormat: Sendable {
@@ -130,3 +131,4 @@ extension GPUDevice {
         }
     }
 }
+#endif

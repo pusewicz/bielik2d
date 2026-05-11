@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 import CSDL3
 
 public enum SamplerFilter {
@@ -58,3 +59,4 @@ extension GPUDevice {
         return Sampler(handle: s, device: handle)
     }
 }
+#endif

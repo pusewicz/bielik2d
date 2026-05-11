@@ -30,6 +30,21 @@ swift run Bielik2DDemo
 
 The demo opens a window with a spinning pink quad, a blue filled circle, a yellow line, and a "Hello, Bielik!" label.
 
+## Web build (experimental)
+
+The `web` branch ships a parallel WebAssembly + WebGPU target. It does not use SDL3 — the platform layer is JavaScriptKit and the renderer is WebGPU through the browser's JS API.
+
+```sh
+swiftly install 6.3 && swiftly use 6.3
+swift sdk install \
+  https://download.swift.org/swift-6.3-release/wasm-sdk/swift-6.3-RELEASE/swift-6.3-RELEASE_wasm.artifactbundle.tar.gz \
+  --checksum 9fa4016ee632c7e9e906608ec3b55cf13dfc4dff44e47574c5af58064dc33fd9
+./scripts/build-web.sh
+python3 -m http.server -d web/dist
+```
+
+Then open `http://localhost:8000` in Chrome or another WebGPU-capable browser. Set `BIELIK2D_WASM_SDK` to override the SDK ID if `swift sdk list` shows a different name.
+
 ## Layout
 
 | Path | What's in it |
@@ -42,7 +57,9 @@ The demo opens a window with a spinning pink quad, a blue filled circle, a yello
 | `Sources/Bielik2D/Resources/shaders/` | Pre-compiled SPIR-V bytecode (built by `Shaders/build.sh`) |
 | `Sources/CSDL3/` | systemLibrary umbrella for SDL3, SDL3_image, SDL3_ttf |
 | `Sources/CSDL3Shadercross/` | systemLibrary for the vendored shadercross |
-| `Sources/Bielik2DDemo/` | Runnable example |
+| `Sources/Bielik2DDemo/` | Runnable example (macOS) |
+| `Sources/Bielik2DWeb/` | WebGPU/JavaScriptKit web target |
+| `Sources/Bielik2DWebDemo/` | Runnable example (web, via `scripts/build-web.sh`) |
 | `Shaders/src/` | HLSL sources compiled to SPIR-V at build time |
 | `vendor/SDL_shadercross/` | git submodule |
 | `Tests/Bielik2DTests/` | Red-green TDD suite |
