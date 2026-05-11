@@ -13,66 +13,43 @@ public enum AppError: Error, CustomStringConvertible {
 }
 
 public final class App {
-    public private(set) var isRunning: Bool = false
     public let gpu: GPUDevice
-    public private(set) var window: OpaquePointer?
-    private var keysJustPressed: Set<UInt32> = []
+    let platform: SDL3Platform
+
+    public var isRunning: Bool { platform.windowHandle != nil && !platform.shouldQuit }
+    public var window: OpaquePointer? { platform.windowHandle }
 
     public init(title: String, width: Int, height: Int) throws {
-        guard SDL_Init(SDL_INIT_VIDEO) else {
-            throw AppError.sdlInit(lastSDLError())
-        }
-        guard let win = SDL_CreateWindow(title, Int32(width), Int32(height), SDL_WINDOW_HIGH_PIXEL_DENSITY) else {
-            SDL_Quit()
-            throw AppError.createWindow(lastSDLError())
-        }
-        self.window = win
+        let plat = try SDL3Platform.start(title: title, width: width, height: height)
         do {
             self.gpu = try GPUDevice()
-            try gpu.claim(window: win)
+            try gpu.claim(window: plat.windowHandle!)
         } catch {
-            SDL_DestroyWindow(win)
-            SDL_Quit()
+            plat.stop()
             throw error
         }
-        self.isRunning = true
+        self.platform = plat
     }
 
     public func update() {
-        keysJustPressed.removeAll(keepingCapacity: true)
-        var ev = SDL_Event()
-        while SDL_PollEvent(&ev) {
-            switch SDL_EventType(rawValue: ev.type) {
-            case SDL_EVENT_QUIT, SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-                isRunning = false
-            case SDL_EVENT_KEY_DOWN:
-                if !ev.key.repeat {
-                    keysJustPressed.insert(ev.key.scancode.rawValue)
-                }
-            default:
-                break
-            }
-        }
+        platform.pollEvents()
     }
 
     /// Returns true exactly on the frame the key transitioned from up to down.
     public func keyJustPressed(_ scancode: SDL_Scancode) -> Bool {
-        keysJustPressed.contains(scancode.rawValue)
+        platform.keyJustPressed(scancode.rawValue)
     }
 
     public func destroy() {
-        if let win = window {
+        if let win = platform.windowHandle {
             gpu.release(window: win)
-            SDL_DestroyWindow(win)
-            window = nil
         }
         gpu.destroy()
-        SDL_Quit()
-        isRunning = false
+        platform.stop()
     }
 
     deinit {
-        if isRunning {
+        if platform.windowHandle != nil {
             destroy()
         }
     }
