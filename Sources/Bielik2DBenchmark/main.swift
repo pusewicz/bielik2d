@@ -46,6 +46,7 @@ player.scale = SIMD2(spriteScale, spriteScale)
 
 let textEngine = try TextEngine(on: app.gpu)
 let font = try Font(path: "/System/Library/Fonts/Geneva.ttf", ptSize: 20)
+let hudLabel = try Label(font: font, engine: textEngine)
 
 // Vertex buffer sized for the maximum entity count we'll ever spawn, plus
 // headroom for HUD glyph vertices (~6 verts per character × any line we draw).
@@ -200,7 +201,8 @@ while app.isRunning {
                        mode == .shapes ? "shapes" : "sprites",
                        presentLabels[presentIndex],
                        countStep)
-    draw.text(label, font: font, at: SIMD2(20, 28), color: .white)
+    hudLabel.setString(label)
+    draw.text(hudLabel, at: SIMD2(20, 28), color: .white)
     let tBatch1 = nowNs()
 
     let cmd = try app.gpu.acquireCommandBuffer()

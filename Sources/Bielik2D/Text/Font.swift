@@ -5,12 +5,14 @@ public enum FontError: Error, CustomStringConvertible {
     case ttfInitFailed(String)
     case openFailed(String)
     case createEngineFailed(String)
+    case createTextFailed(String)
 
     public var description: String {
         switch self {
         case .ttfInitFailed(let m): "TTF_Init failed: \(m)"
         case .openFailed(let m): "TTF_OpenFont failed: \(m)"
         case .createEngineFailed(let m): "TTF_CreateGPUTextEngine failed: \(m)"
+        case .createTextFailed(let m): "TTF_CreateText failed: \(m)"
         }
     }
 }
