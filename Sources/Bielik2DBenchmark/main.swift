@@ -75,7 +75,7 @@ func makeEntity() -> Entity {
     )
 }
 
-var entities: [Entity] = (0..<initialEntityCount).map { _ in makeEntity() }
+var entities = ContiguousArray<Entity>((0..<initialEntityCount).map { _ in makeEntity() })
 
 @MainActor
 func adjustEntityCount(by delta: Int) {
