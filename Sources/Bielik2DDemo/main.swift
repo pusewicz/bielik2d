@@ -47,7 +47,9 @@ while app.isRunning {
     batcher.reset()
     batcher.setTexture(whiteTex.handle)
 
-    draw.pushTransform(.translation(x: windowSize.x / 2, y: windowSize.y / 2))
+    let center = SIMD2<Float>(windowSize.x / 2, windowSize.y / 2)
+
+    draw.pushTransform(.translation(x: center.x, y: center.y))
     draw.pushTransform(.rotation(angleRadians: t))
     draw.pushColor(Color(r: 1.0, g: 0.4, b: 0.6))
     draw.quad(rect: Rect(x: -150, y: -150, width: 300, height: 300),
@@ -56,6 +58,11 @@ while app.isRunning {
     draw.popColor()
     draw.popTransform()
     draw.popTransform()
+
+    draw.circleFill(center: center + SIMD2(220, 0), radius: 60,
+                    color: Color(r: 0.4, g: 0.8, b: 1.0))
+    draw.line(from: center + SIMD2(-300, -150), to: center + SIMD2(-300, 150),
+              thickness: 8, color: Color(r: 1.0, g: 0.9, b: 0.3))
 
     let cmd = try app.gpu.acquireCommandBuffer()
     guard let swap = cmd.acquireSwapchainTexture(for: window, device: app.gpu) else {
