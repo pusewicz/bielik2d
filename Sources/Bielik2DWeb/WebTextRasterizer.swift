@@ -20,10 +20,17 @@ public enum WebTextRasterizer {
 
         ctx["font"] = .string(fontCSS)
         guard let metrics = ctx.measureText!(text).object else { return nil }
-        let w = Int(ceil(metrics["width"].number ?? 0))
+        let advance = metrics["width"].number ?? 0
         let ascent = metrics["actualBoundingBoxAscent"].number ?? 0
         let descent = metrics["actualBoundingBoxDescent"].number ?? 0
-        let h = Int(ceil(ascent + descent))
+        let boxLeft = metrics["actualBoundingBoxLeft"].number ?? 0
+        let boxRight = metrics["actualBoundingBoxRight"].number ?? 0
+        // Pad one CSS pixel on each side to absorb subpixel rounding and any
+        // stylistic overshoot the metrics under-count (e.g. accented caps).
+        let pad: Double = 1
+        let visualWidth = max(advance, boxLeft + boxRight)
+        let w = Int(ceil(visualWidth + pad * 2))
+        let h = Int(ceil(ascent + descent + pad * 2))
         if w <= 0 || h <= 0 { return nil }
 
         // Sizing the canvas resets its 2D state, so restore font + colour.
@@ -31,8 +38,11 @@ public enum WebTextRasterizer {
         canvas["height"] = .number(Double(h))
         ctx["font"] = .string(fontCSS)
         ctx["fillStyle"] = .string(fillStyle)
-        ctx["textBaseline"] = .string("top")
-        _ = ctx.fillText!(text, 0, 0)
+        ctx["textBaseline"] = .string("alphabetic")
+        // Draw with the baseline at `ascent + pad`, x offset by `boxLeft + pad`
+        // so glyphs that start left of the origin (rare but legal) stay inside
+        // the texture.
+        _ = ctx.fillText!(text, boxLeft + pad, ascent + pad)
 
         return RasterizedText(canvas: canvas, width: w, height: h)
     }
