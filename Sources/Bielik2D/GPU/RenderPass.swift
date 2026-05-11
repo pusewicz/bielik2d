@@ -15,8 +15,16 @@ public struct RenderPass {
     }
 
     public func bindFragmentSampler(_ texture: Texture, sampler: Sampler, slot: UInt32 = 0) {
+        bindFragmentSampler(textureHandle: texture.handle, sampler: sampler, slot: slot)
+    }
+
+    /// Binds a raw `SDL_GPUTexture*` handle. Used by the batcher when iterating
+    /// commands — the per-command texture might be a sprite, a canvas, or
+    /// SDL3_ttf's glyph atlas, all of which we only know as opaque pointers.
+    public func bindFragmentSampler(textureHandle: OpaquePointer?, sampler: Sampler, slot: UInt32 = 0) {
+        guard let textureHandle else { return }
         var binding = SDL_GPUTextureSamplerBinding()
-        binding.texture = texture.handle
+        binding.texture = textureHandle
         binding.sampler = sampler.handle
         SDL_BindGPUFragmentSamplers(handle, slot, &binding, 1)
     }

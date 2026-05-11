@@ -34,7 +34,11 @@ extension Draw {
             for i in 0..<Int(s.num_indices) {
                 let idx = Int(indices![i])
                 let local = xy![idx]
-                let world = t.transform(SIMD2(origin.x + local.x, origin.y + local.y))
+                // SDL_ttf assumes +Y is up in its GPU output (see SDL_gpu_textengine.c:
+                // "In the GPU API positive y-axis is upwards so the signs of the y-coords is reversed").
+                // Our world is +Y down, so flip y back. Origin then corresponds to the
+                // text's top-left rather than its baseline.
+                let world = t.transform(SIMD2(origin.x + local.x, origin.y - local.y))
                 let v = Vertex(
                     pos: world,
                     uv: SIMD2(uv![idx].x, uv![idx].y),

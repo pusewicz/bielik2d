@@ -92,8 +92,8 @@ while app.isRunning {
         guard !batcher.vertices.isEmpty else { return }
         pass.bind(pipe)
         pass.bindVertexBuffer(vbuf)
-        pass.bindFragmentSampler(whiteTex, sampler: sampler)
         for c in batcher.commandsSortedByLayer {
+            pass.bindFragmentSampler(textureHandle: c.state.texture, sampler: sampler)
             pass.draw(vertexCount: c.vertexCount, firstVertex: c.vertexStart)
         }
     }
