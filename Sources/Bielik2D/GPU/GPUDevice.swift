@@ -1,5 +1,17 @@
 import CSDL3
 
+public enum PresentMode: Sendable {
+    case vsync, immediate, mailbox
+
+    var sdlValue: SDL_GPUPresentMode {
+        switch self {
+        case .vsync: SDL_GPU_PRESENTMODE_VSYNC
+        case .immediate: SDL_GPU_PRESENTMODE_IMMEDIATE
+        case .mailbox: SDL_GPU_PRESENTMODE_MAILBOX
+        }
+    }
+}
+
 public enum GPUError: Error, CustomStringConvertible {
     case createDevice(String)
     case claimWindow(String)
@@ -56,6 +68,11 @@ public final class GPUDevice {
 
     public func release(window: OpaquePointer) {
         SDL_ReleaseWindowFromGPUDevice(handle, window)
+    }
+
+    @discardableResult
+    public func setSwapchainPresentMode(_ mode: PresentMode, for window: OpaquePointer) -> Bool {
+        SDL_SetGPUSwapchainParameters(handle, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, mode.sdlValue)
     }
 
     public var driverName: String {
