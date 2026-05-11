@@ -89,9 +89,10 @@ public final class WebGPURenderBackend {
         return WebGPURenderBackend(device: device, context: context, queue: queue, preferredFormat: preferredFormat)
     }
 
-    /// Runs a single clear-only frame. Phase 17 expands `body` with bind +
-    /// draw calls inside the render pass.
-    public func frame(clear: ClearColor) {
+    /// Runs a single frame: begins a render pass with the given clear colour,
+    /// calls `render` so the caller can bind pipelines, buffers, bind groups
+    /// and issue draw calls, then submits the encoded command buffer.
+    public func frame(clear: ClearColor, render: (JSObject) -> Void = { _ in }) {
         guard let texture = context.getCurrentTexture!().object,
               let view = texture.createView!().object else { return }
 
@@ -113,23 +114,58 @@ public final class WebGPURenderBackend {
 
         guard let encoder = device.createCommandEncoder!().object,
               let pass = encoder.beginRenderPass!(descriptor).object else { return }
+        render(pass)
         _ = pass.end!()
         guard let cmd = encoder.finish!().object else { return }
         let submitList = JSObject.global.Array.function!.new(cmd)
         _ = queue.submit!(submitList)
     }
+
+    /// Fetches a WGSL source by relative URL (typically `shaders/<name>.wgsl`)
+    /// and turns it into a `GPUShaderModule`.
+    public func loadShaderModule(url: String) async throws -> JSObject {
+        let resp = try await awaitJSPromise(JSObject.global.fetch.function!(url))
+        guard let respObj = resp.object else { throw WebGPUError.canvasContextMissing }
+        let textPromise = respObj.text!()
+        let textValue = try await awaitJSPromise(textPromise)
+        guard let source = textValue.string else { throw WebGPUError.canvasContextMissing }
+        guard let module = device.createShaderModule!(newObject(["code": .string(source)])).object else {
+            throw WebGPUError.canvasContextMissing
+        }
+        return module
+    }
+}
+
+public enum WebJS {
+    @inline(__always)
+    public static func object(_ pairs: [String: JSValue]) -> JSObject {
+        let obj = JSObject.global.Object.function!.new()
+        for (k, v) in pairs { obj[k] = v }
+        return obj
+    }
+
+    public static func array(_ values: [JSObject]) -> JSObject {
+        let arr = JSObject.global.Array.function!.new()
+        for v in values { _ = arr.push!(v) }
+        return arr
+    }
+
+    public static func array(_ values: [JSValue]) -> JSObject {
+        let arr = JSObject.global.Array.function!.new()
+        for v in values { _ = arr.push!(v) }
+        return arr
+    }
+
+    @inline(__always)
+    public static func await_(_ value: JSValue) async throws -> JSValue {
+        guard let obj = value.object, let promise = JSPromise(obj) else { return value }
+        return try await promise.value
+    }
 }
 
 @inline(__always)
-func newObject(_ pairs: [String: JSValue]) -> JSObject {
-    let obj = JSObject.global.Object.function!.new()
-    for (k, v) in pairs { obj[k] = v }
-    return obj
-}
+func newObject(_ pairs: [String: JSValue]) -> JSObject { WebJS.object(pairs) }
 
 @inline(__always)
-private func awaitJSPromise(_ value: JSValue) async throws -> JSValue {
-    guard let obj = value.object, let promise = JSPromise(obj) else { return value }
-    return try await promise.value
-}
+func awaitJSPromise(_ value: JSValue) async throws -> JSValue { try await WebJS.await_(value) }
 #endif

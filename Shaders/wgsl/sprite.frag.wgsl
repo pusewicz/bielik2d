@@ -8,21 +8,23 @@ struct FragInput {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
-    @location(2) type: f32,
+    @location(2) shape: f32,
     @location(3) radius: f32,
     @location(4) stroke: f32,
     @location(5) aa: f32,
     @location(6) fill: f32,
 }
 
-@group(2) @binding(0) var mainTex: texture_2d<f32>;
-@group(2) @binding(1) var mainSampler: sampler;
+@group(1) @binding(0) var mainTex: texture_2d<f32>;
+@group(1) @binding(1) var mainSampler: sampler;
 
 @fragment
 fn main(in: FragInput) -> @location(0) vec4<f32> {
-    let t = i32(round(in.type));
+    let t = i32(round(in.shape));
+    // textureSampleLevel rather than textureSample: WGSL forbids the implicit
+    // derivative form inside the shape branch because `t` is non-uniform.
     if (t == 0) {
-        let tex = textureSample(mainTex, mainSampler, in.uv);
+        let tex = textureSampleLevel(mainTex, mainSampler, in.uv, 0.0);
         return tex * in.color;
     }
     if (t == 1) {
