@@ -119,6 +119,10 @@ let timebase: (numer: UInt64, denom: UInt64) = {
 }
 let profileWindow = 60
 var profileFrames = 0
+// Rebuild the HUD string every N frames instead of every frame — the digits
+// flicker too fast to read otherwise and we avoid an 80-byte malloc per frame.
+let hudRebuildInterval = 4
+var hudFrameCounter = 0
 var sumUpdateNs: UInt64 = 0
 var sumBatchNs: UInt64 = 0
 var sumUploadNs: UInt64 = 0
@@ -192,16 +196,19 @@ while app.isRunning {
         }
     }
 
-    // HUD overlay.
-    let avgMs = frameTimer.averageFrameSeconds * 1000.0
-    let maxMs = frameTimer.maxFrameSeconds * 1000.0
-    let fps = frameTimer.fps
-    let label = String(format: "%.0f fps  %.2f ms (peak %.2f)  %d %@  vsync:%@  [Space swap, V cycle vsync, +/- ±%d]",
-                       fps, avgMs, maxMs, entities.count,
-                       mode == .shapes ? "shapes" : "sprites",
-                       presentLabels[presentIndex],
-                       countStep)
-    hudLabel.setString(label)
+    // HUD overlay. Rebuild the string only every Nth frame.
+    if hudFrameCounter % hudRebuildInterval == 0 {
+        let avgMs = frameTimer.averageFrameSeconds * 1000.0
+        let maxMs = frameTimer.maxFrameSeconds * 1000.0
+        let fps = frameTimer.fps
+        let label = String(format: "%.0f fps  %.2f ms (peak %.2f)  %d %@  vsync:%@  [Space swap, V cycle vsync, +/- ±%d]",
+                           fps, avgMs, maxMs, entities.count,
+                           mode == .shapes ? "shapes" : "sprites",
+                           presentLabels[presentIndex],
+                           countStep)
+        hudLabel.setString(label)
+    }
+    hudFrameCounter &+= 1
     draw.text(hudLabel, at: SIMD2(20, 28), color: .white)
     let tBatch1 = nowNs()
 
