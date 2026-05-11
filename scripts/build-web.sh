@@ -58,9 +58,7 @@ echo "==> copying shader resources"
 mkdir -p "$DIST/shaders"
 cp Sources/Bielik2D/Resources/shaders/*.wgsl "$DIST/shaders/"
 
-if [ ! -f "$DIST/index.html" ]; then
-    echo "==> installing minimal host page"
-    cp web/index.html "$DIST/index.html"
-fi
+echo "==> installing host page"
+cp web/index.html "$DIST/index.html"
 
 ls -lh "$DIST/"
