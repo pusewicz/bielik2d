@@ -43,7 +43,7 @@ extension Draw {
     /// Creates and destroys a `TTF_Text` for the call — fine for one-off labels,
     /// but use `Label` + `text(_ label:...)` for anything drawn every frame.
     public func text(_ string: String, font: Font, at origin: SIMD2<Float>, color: Color = .white) {
-        guard let engine = textEngine else { return }
+        guard let engine = textEngine as? TextEngine else { return }
         guard let textHandle = string.withCString({ cstr in
             TTF_CreateText(engine.handle, font.handle, cstr, string.utf8.count)
         }) else { return }
@@ -54,7 +54,7 @@ extension Draw {
     /// Renders a cached label. Glyph layout was set up at `Label.setString` time,
     /// so this path skips the create/destroy cost of the one-shot overload.
     public func text(_ label: Label, at origin: SIMD2<Float>, color: Color = .white) {
-        guard textEngine != nil else { return }
+        guard textEngine is TextEngine else { return }
         emitTextSequence(handle: label.handle, at: origin, color: color)
     }
 

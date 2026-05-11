@@ -3,12 +3,14 @@
 /// push is composed against the current peek so callers think in local space.
 public final class Draw {
     public let batcher: Batcher
-    public let textEngine: TextEngine?
+    /// Opaque text engine. SDL3 stores a `TextEngine` here; the web backend
+    /// stores a `WebTextRasterizer`. The Text extension casts as needed.
+    public let textEngine: Any?
     private var transforms = StateStack(initial: Mat3x2.identity)
     private var colors = StateStack(initial: Color.white)
     private var layers = StateStack(initial: 0)
 
-    public init(batcher: Batcher, textEngine: TextEngine? = nil) {
+    public init(batcher: Batcher, textEngine: Any? = nil) {
         self.batcher = batcher
         self.textEngine = textEngine
     }

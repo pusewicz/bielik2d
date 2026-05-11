@@ -18,3 +18,4 @@ vendor/**/build/
 # rebuildable shader bytecode (kept in repo for now; uncomment if we ever switch)
 # Sources/Bielik2D/Shaders/*.spv
 vendor/.install
+web/dist/

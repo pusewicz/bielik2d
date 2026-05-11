@@ -16,25 +16,13 @@
 </div>
 <div id="status">loading…</div>
 <script type="module">
-  // PackageToJS emits an entrypoint module that exports `init`. The exact
-  // filename depends on the plugin version; both `app.js` and `index.js` are
-  // in the wild.
-  const candidates = ["./app.js", "./index.js"];
-  let entry;
-  for (const c of candidates) {
-    try { entry = await import(c); break; } catch (e) { /* try next */ }
-  }
-  if (!entry) {
-    document.getElementById("status").textContent =
-        "couldn't locate PackageToJS entrypoint. Did build-web.sh finish?";
-    throw new Error("missing PackageToJS entrypoint");
-  }
-  const { instantiate } = entry;
+  import { init } from "./index.js";
+  const status = document.getElementById("status");
   try {
-    await instantiate({});
-    document.getElementById("status").textContent = "running";
+    await init({});
+    status.textContent = "running";
   } catch (e) {
-    document.getElementById("status").textContent = "error: " + e;
+    status.textContent = "error: " + e;
     throw e;
   }
 </script>

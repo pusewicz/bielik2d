@@ -1,20 +1,11 @@
 #if canImport(CSDL3)
 import CSDL3
 
-public enum TextureFormat: Sendable {
-    case rgba8Unorm
-    case bgra8Unorm
-
+extension TextureFormat {
     var sdlValue: SDL_GPUTextureFormat {
         switch self {
         case .rgba8Unorm: SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
         case .bgra8Unorm: SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM
-        }
-    }
-
-    var bytesPerPixel: Int {
-        switch self {
-        case .rgba8Unorm, .bgra8Unorm: 4
         }
     }
 }

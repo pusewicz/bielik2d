@@ -1,4 +1,8 @@
+#if canImport(simd)
 import simd
+#else
+import kvSIMD
+#endif
 
 /// A simple 2D camera: an orthographic projection sized to the viewport, plus
 /// a `view` transform applied to the world before projection.

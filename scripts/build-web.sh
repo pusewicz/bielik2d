@@ -25,10 +25,27 @@ SDK_ID="${BIELIK2D_WASM_SDK:-swift-6.3.1-RELEASE_wasm}"
 DIST=web/dist
 mkdir -p "$DIST"
 
-SWIFT_BIN="$(command -v swift || true)"
-if [ -z "$SWIFT_BIN" ] || [[ "$SWIFT_BIN" == /usr/bin/swift ]] || [[ "$SWIFT_BIN" == /Applications/Xcode*.app/* ]]; then
-    echo "active swift is '${SWIFT_BIN:-not found}', which doesn't support wasm32." >&2
-    echo "Install a swift.org toolchain (see header of this script)." >&2
+# Prefer a swiftly-managed toolchain if installed, since Xcode's bundled swift
+# lacks the wasm32 backend. Caller can override by exporting PATH explicitly or
+# setting BIELIK2D_SWIFT to a specific swift binary.
+if [ -n "${BIELIK2D_SWIFT:-}" ]; then
+    SWIFT_BIN="$BIELIK2D_SWIFT"
+elif [ -x "$HOME/.swiftly/bin/swift" ]; then
+    export PATH="$HOME/.swiftly/bin:$PATH"
+    SWIFT_BIN="$HOME/.swiftly/bin/swift"
+elif command -v swift >/dev/null 2>&1; then
+    SWIFT_BIN="$(command -v swift)"
+else
+    echo "swift not on PATH — install a swift.org toolchain (see header)." >&2
+    exit 1
+fi
+
+# Verify the wasm Swift SDK is installed. Cross-compilation happens through the
+# SDK, not the host swiftc, so we just check that the requested SDK id exists.
+if ! "$SWIFT_BIN" sdk list 2>/dev/null | grep -qx "$SDK_ID"; then
+    echo "wasm SDK '$SDK_ID' is not installed." >&2
+    echo "Run scripts/install-wasm-sdk.sh, or set BIELIK2D_WASM_SDK to a matching id." >&2
+    "$SWIFT_BIN" sdk list 2>&1 | head -20 >&2 || true
     exit 1
 fi
 

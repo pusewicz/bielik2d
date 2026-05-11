@@ -20,28 +20,29 @@ public final class WebPlatform {
     }
 
     public static func attach(canvasID: String) throws -> WebPlatform {
-        let document = JSObject.global.document
-        let lookup = document.getElementById!(canvasID)
-        guard let canvas = lookup.object else {
+        guard let document = JSObject.global.document.object else {
+            throw WebPlatformError.canvasNotFound(canvasID)
+        }
+        guard let canvas = document.getElementById!(canvasID).object else {
             throw WebPlatformError.canvasNotFound(canvasID)
         }
         let dpr = JSObject.global.devicePixelRatio.number ?? 1.0
-        let rect = canvas.getBoundingClientRect!()
+        let rectValue = canvas.getBoundingClientRect!()
+        let rect = rectValue.object!
         let cssW = rect.width.number ?? 0
         let cssH = rect.height.number ?? 0
         let w = Int((cssW * dpr).rounded())
         let h = Int((cssH * dpr).rounded())
-        var mutCanvas = canvas
-        mutCanvas["width"] = .number(Double(w))
-        mutCanvas["height"] = .number(Double(h))
-        return WebPlatform(canvas: mutCanvas, size: SIMD2(w, h))
+        canvas["width"] = JSValue.number(Double(w))
+        canvas["height"] = JSValue.number(Double(h))
+        return WebPlatform(canvas: canvas, size: SIMD2(w, h))
     }
 
     /// Drives `body` once per `requestAnimationFrame`. The closure receives
     /// the time delta in seconds since the previous frame.
     public func run(_ body: @escaping (Double) -> Void) {
         var lastTime: Double = 0
-        let requestFrame = JSObject.global.requestAnimationFrame.function!
+        let global = JSObject.global
 
         let tick = JSClosure { [weak self] args in
             guard let self else { return .undefined }
@@ -51,12 +52,12 @@ public final class WebPlatform {
             self.beginFrame()
             body(dt)
             if !self.shouldQuit, let next = self.rafClosure {
-                _ = requestFrame(next)
+                _ = global.requestAnimationFrame!(next)
             }
             return .undefined
         }
         self.rafClosure = tick
-        _ = requestFrame(tick)
+        _ = global.requestAnimationFrame!(tick)
     }
 
     public func keyJustPressed(_ code: String) -> Bool {

@@ -45,8 +45,8 @@ public final class WebGPURenderBackend {
     }
 
     public static func create(on platform: WebPlatform) async throws -> WebGPURenderBackend {
-        let gpu = JSObject.global.navigator.gpu
-        if gpu.isUndefined || gpu.isNull {
+        guard let navigator = JSObject.global.navigator.object,
+              let gpu = navigator.gpu.object else {
             throw WebGPUError.unsupported
         }
 
@@ -56,7 +56,7 @@ public final class WebGPURenderBackend {
         } catch {
             throw WebGPUError.adapterRequestFailed
         }
-        guard let adapter = adapterValue.object, !adapter.isNull else {
+        guard !adapterValue.isNull, let adapter = adapterValue.object else {
             throw WebGPUError.adapterRequestFailed
         }
 
@@ -112,7 +112,7 @@ public final class WebGPURenderBackend {
         ])
 
         guard let encoder = device.createCommandEncoder!().object,
-              let pass = encoder.beginRenderPass!(.object(descriptor)).object else { return }
+              let pass = encoder.beginRenderPass!(descriptor).object else { return }
         _ = pass.end!()
         guard let cmd = encoder.finish!().object else { return }
         let submitList = JSObject.global.Array.function!.new(cmd)
@@ -122,7 +122,7 @@ public final class WebGPURenderBackend {
 
 @inline(__always)
 func newObject(_ pairs: [String: JSValue]) -> JSObject {
-    var obj = JSObject.global.Object.function!.new()
+    let obj = JSObject.global.Object.function!.new()
     for (k, v) in pairs { obj[k] = v }
     return obj
 }

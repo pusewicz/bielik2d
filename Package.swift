@@ -23,6 +23,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swiftwasm/JavaScriptKit.git", from: "0.52.0"),
+        // Drop-in `import simd` shim for non-Apple platforms (wasm, Linux).
+        // Apple platforms keep using the system `simd` framework.
+        .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0"),
     ],
     targets: [
         .systemLibrary(
@@ -38,6 +41,14 @@ let package = Package(
             dependencies: [
                 .target(name: "CSDL3", condition: .when(platforms: [.macOS])),
                 .target(name: "CSDL3Shadercross", condition: .when(platforms: [.macOS])),
+                // Use the `.forced` product: kvSIMD's vanilla `kvSIMD` product
+                // resolves at host-package-evaluation time, where canImport(simd)
+                // is always true on macOS, so it'd ship the placeholder module.
+                .product(
+                    name: "kvSIMD.forced",
+                    package: "kvSIMD.swift",
+                    condition: .when(platforms: [.wasi, .linux, .windows])
+                ),
             ],
             resources: [.copy("Resources/shaders")],
             linkerSettings: nativeLibPaths

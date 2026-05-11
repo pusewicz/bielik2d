@@ -1,5 +1,9 @@
 import Foundation
+#if canImport(simd)
 import simd
+#else
+import kvSIMD
+#endif
 
 /// Encodes the SDF shape carried in `Vertex.type`. Must stay in sync with the
 /// branches in `Shaders/src/sprite.frag.hlsl`.

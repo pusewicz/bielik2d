@@ -14,7 +14,9 @@ Task {
             backend.frame(clear: clear)
         }
     } catch {
-        _ = JSObject.global.console.error!(String(describing: error))
+        if let console = JSObject.global.console.object {
+            _ = console.error!(String(describing: error))
+        }
     }
 }
 #else

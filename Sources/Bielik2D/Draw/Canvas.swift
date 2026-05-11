@@ -1,3 +1,4 @@
+#if canImport(CSDL3)
 /// An offscreen render target. Wraps a sampler+color-target texture so you
 /// can draw into it via `cmd.renderTo(canvas) { pass in … }` and then sample
 /// it back into another render pass with `Draw.canvas(_:at:)`.
@@ -35,3 +36,4 @@ extension Draw {
         quad(rect: rect, uv: Rect(x: 0, y: 0, width: 1, height: 1), color: SIMD4<Float>(1, 1, 1, 1))
     }
 }
+#endif

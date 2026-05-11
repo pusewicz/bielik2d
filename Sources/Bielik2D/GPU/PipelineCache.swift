@@ -33,4 +33,3 @@ public final class PipelineCache<Value> {
     }
 }
 
-extension TextureFormat: Hashable {}
