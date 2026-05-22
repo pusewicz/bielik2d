@@ -19,6 +19,7 @@ struct VertexInput {
     @location(6) shape: f32,
     @location(7) alpha: f32,
     @location(8) fill: f32,
+    @location(10) attributes: vec4<f32>,   // (texelW, texelH, scaleMode, _)
 }
 
 struct VertexOutput {
@@ -30,6 +31,7 @@ struct VertexOutput {
     @location(4) stroke: f32,
     @location(5) aa: f32,
     @location(6) fill: f32,
+    @location(7) scaleData: vec4<f32>,
 }
 
 @vertex
@@ -43,5 +45,6 @@ fn main(in: VertexInput) -> VertexOutput {
     out.stroke = in.stroke;
     out.aa = in.aa;
     out.fill = in.fill;
+    out.scaleData = in.attributes;
     return out;
 }

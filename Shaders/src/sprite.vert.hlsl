@@ -19,14 +19,15 @@ struct VSInput {
 };
 
 struct VSOutput {
-    float4 position : SV_Position;
-    float2 uv       : TEXCOORD0;
-    float4 color    : COLOR0;
-    float  type     : TEXCOORD1;
-    float  radius   : TEXCOORD2;
-    float  stroke   : TEXCOORD3;
-    float  aa       : TEXCOORD4;
-    float  fill     : TEXCOORD5;
+    float4 position  : SV_Position;
+    float2 uv        : TEXCOORD0;
+    float4 color     : COLOR0;
+    float  type      : TEXCOORD1;
+    float  radius    : TEXCOORD2;
+    float  stroke    : TEXCOORD3;
+    float  aa        : TEXCOORD4;
+    float  fill      : TEXCOORD5;
+    float4 scaleData : TEXCOORD6;   // (texelW, texelH, scaleMode, _) for sprite sampling
 };
 
 cbuffer CameraUBO : register(b0, space1) {
@@ -43,5 +44,6 @@ VSOutput main(VSInput input) {
     o.stroke = input.stroke;
     o.aa = input.aa;
     o.fill = input.fill;
+    o.scaleData = input.attributes;
     return o;
 }
