@@ -5,10 +5,12 @@ import CSDL3
 /// the device, the builtin pipeline (cached per color format), a 1×1 white texture
 /// for untextured geometry, a linear sampler, and a reused vertex/transfer buffer
 /// pair. Callers never touch a Batcher, vertex buffer, or render pass — they queue
-/// draws and then flush with `render(_:to:)` (a canvas) or `App.drawOntoScreen`
-/// (the window). This is the CF `cf_render_to` / `cf_app_draw_onto_screen` split.
-public final class Renderer {
+/// draws and flush with `App.drawOntoScreen` (the window, via `RenderBackend`) or
+/// `render(_:to:)` (an offscreen canvas). The CF `cf_app_draw_onto_screen` /
+/// `cf_render_to` split.
+public final class Renderer: RenderBackend {
     let device: GPUDevice
+    private let window: OpaquePointer
     private let vertexShader: Shader
     private let fragmentShader: Shader
     private let pipelines: PipelineCache<GraphicsPipeline>
@@ -18,8 +20,9 @@ public final class Renderer {
     private var xfer: TransferBuffer
     private var capacityBytes: Int
 
-    init(device: GPUDevice) throws {
+    init(device: GPUDevice, window: OpaquePointer) throws {
         self.device = device
+        self.window = window
         let vs = try Shader.builtin(name: "sprite.vert", stage: .vertex, on: device)
         let fs = try Shader.builtin(name: "sprite.frag", stage: .fragment, on: device)
         self.vertexShader = vs
@@ -53,27 +56,46 @@ public final class Renderer {
         self.xfer = try device.makeTransferBuffer(size: capacityBytes, usage: .upload)
     }
 
-    /// Flushes `draw`'s queued geometry into `canvas`, then resets the queue.
-    /// `camera` defaults to an orthographic projection sized to the canvas.
-    public func render(_ draw: Draw, to canvas: Canvas, clear: Color? = nil, camera: Camera? = nil) throws {
-        let cam = camera ?? Camera(viewportSize: SIMD2(Float(canvas.width), Float(canvas.height)))
-        let cmd = try device.acquireCommandBuffer()
-        flush(draw, into: canvas.texture, clear: clear, camera: cam, on: cmd)
+    // MARK: - RenderBackend (the window/swapchain)
+
+    /// Flushes a draw list to the window's swapchain and presents. Driven by
+    /// `App.drawOntoScreen` via `Draw.flush(through:)`.
+    public func render(_ list: DrawList, camera: Camera, clear: Color?) {
+        guard let cmd = try? device.acquireCommandBuffer() else { return }
+        guard let swap = cmd.acquireSwapchainTexture(for: window, device: device) else {
+            cmd.submit()
+            return
+        }
+        flushList(list, into: swap, clear: clear, camera: camera, on: cmd)
         cmd.submit()
     }
 
-    /// Uploads the queued vertices, runs one render pass into `colorTarget`
-    /// (binding the white texture for untextured commands), then resets the queue.
-    /// Shared by canvas rendering and `App.drawOntoScreen`.
-    func flush(_ draw: Draw, into colorTarget: Texture, clear: Color?, camera: Camera, on cmd: CommandBuffer) {
-        let verts = draw.batcher.vertices
-        let byteCount = verts.count * MemoryLayout<Vertex>.stride
+    // MARK: - Offscreen canvas
+
+    /// Flushes `draw`'s queued geometry into `canvas`, then resets the queue.
+    /// `camera` defaults to an orthographic projection sized to the canvas.
+    public func render(_ draw: Draw, to canvas: Canvas, clear: Color? = nil, camera: Camera? = nil) {
+        let cam = camera ?? Camera(viewportSize: SIMD2(Float(canvas.width), Float(canvas.height)))
+        let list = DrawList(vertices: draw.batcher.vertices, commands: draw.batcher.commandsSortedByLayer)
+        guard let cmd = try? device.acquireCommandBuffer() else { return }
+        flushList(list, into: canvas.texture, clear: clear, camera: cam, on: cmd)
+        cmd.submit()
+        draw.batcher.reset()
+    }
+
+    // MARK: - Shared flush
+
+    /// Uploads the list's vertices, runs one render pass into `colorTarget`
+    /// (binding the white texture for untextured commands). Does not reset any
+    /// queue — callers own that.
+    private func flushList(_ list: DrawList, into colorTarget: Texture, clear: Color?, camera: Camera, on cmd: CommandBuffer) {
+        let byteCount = list.vertices.count * MemoryLayout<Vertex>.stride
         if byteCount > 0 {
             ensureCapacity(byteCount)
             // cycle: true lets SDL hand us fresh backing if a prior flush this
             // frame is still in flight, so one pooled buffer is safe to reuse.
             xfer.withMappedMemory(cycle: true) { ptr in
-                verts.withUnsafeBytes { src in
+                list.vertices.withUnsafeBytes { src in
                     ptr.copyMemory(from: src.baseAddress!, byteCount: src.count)
                 }
             }
@@ -88,13 +110,12 @@ public final class Renderer {
             let pipe = pipelines.get(PipelineKey(shaderID: 0, colorFormat: colorTarget.format, blendMode: .alpha))
             pass.bind(pipe)
             pass.bindVertexBuffer(vbuf)
-            for c in draw.batcher.commandsSortedByLayer {
+            for c in list.commands {
                 let tex = c.state.texture ?? whiteTexture.handle
                 pass.bindFragmentSampler(textureHandle: tex, sampler: sampler)
                 pass.draw(vertexCount: c.vertexCount, firstVertex: c.vertexStart)
             }
         }
-        draw.batcher.reset()
     }
 
     private func ensureCapacity(_ bytes: Int) {
@@ -106,6 +127,24 @@ public final class Renderer {
         vbuf = try! device.makeBuffer(size: newCap, usage: .vertex)
         xfer = try! device.makeTransferBuffer(size: newCap, usage: .upload)
         capacityBytes = newCap
+    }
+
+    // MARK: - Resource factories (so callers never see a GPUDevice)
+
+    public func makeSprite(png path: String) throws -> Sprite {
+        try Sprite(png: path, on: self)
+    }
+
+    public func makeSprite(image: ImageBytes) throws -> Sprite {
+        try Sprite(image: image, on: self)
+    }
+
+    public func makeCanvas(width: Int, height: Int, format: TextureFormat = .rgba8Unorm) throws -> Canvas {
+        try Canvas(width: width, height: height, format: format, on: self)
+    }
+
+    public func makeTextEngine() throws -> TextEngine {
+        try TextEngine(on: self)
     }
 
     public func destroy() {

@@ -26,7 +26,7 @@ public final class App {
         do {
             self.gpu = try GPUDevice()
             try gpu.claim(window: plat.windowHandle!)
-            self.renderer = try Renderer(device: gpu)
+            self.renderer = try Renderer(device: gpu, window: plat.windowHandle!)
         } catch {
             plat.stop()
             throw error
@@ -38,21 +38,23 @@ public final class App {
         platform.pollEvents()
     }
 
+    /// The active GPU backend name (e.g. "metal"). Diagnostics only.
+    public var driverName: String { gpu.driverName }
+
+    /// Sets the swapchain present mode (vsync / immediate / mailbox).
+    @discardableResult
+    public func setPresentMode(_ mode: PresentMode) -> Bool {
+        guard let win = platform.windowHandle else { return false }
+        return gpu.setSwapchainPresentMode(mode, for: win)
+    }
+
     /// Flushes everything queued in `draw` to the window and presents, then
     /// resets the queue. This is the only call that touches the swapchain — the
     /// CF `cf_app_draw_onto_screen` equivalent. `camera` defaults to an ortho
     /// projection sized to the window.
     public func drawOntoScreen(_ draw: Draw, clear: Color? = nil, camera: Camera? = nil) {
-        guard let window = platform.windowHandle else { draw.batcher.reset(); return }
-        guard let cmd = try? gpu.acquireCommandBuffer() else { draw.batcher.reset(); return }
-        guard let swap = cmd.acquireSwapchainTexture(for: window, device: gpu) else {
-            cmd.submit()
-            draw.batcher.reset()
-            return
-        }
-        let cam = camera ?? Camera(viewportSize: SIMD2(Float(swap.width), Float(swap.height)))
-        renderer.flush(draw, into: swap, clear: clear, camera: cam, on: cmd)
-        cmd.submit()
+        let cam = camera ?? Camera(viewportSize: SIMD2(Float(platform.size.x), Float(platform.size.y)))
+        draw.flush(through: renderer, camera: cam, clear: clear)
     }
 
     /// Returns true exactly on the frame the key transitioned from up to down.

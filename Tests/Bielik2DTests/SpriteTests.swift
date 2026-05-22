@@ -17,7 +17,7 @@ struct SpriteTests {
     @Test func loadPNGFromFixtureHasKnownPixel() throws {
         let app = try App(title: "spr-load", width: 64, height: 64)
         defer { app.destroy() }
-        let s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        let s = try Sprite(png: fixturePath("4x4.png"), on: app.renderer)
         defer { s.destroy() }
         #expect(s.width == 4)
         #expect(s.height == 4)
@@ -26,7 +26,7 @@ struct SpriteTests {
     @Test func drawSpriteEmitsOneTexturedQuad() throws {
         let app = try App(title: "spr-draw", width: 64, height: 64)
         defer { app.destroy() }
-        let s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        let s = try Sprite(png: fixturePath("4x4.png"), on: app.renderer)
         defer { s.destroy() }
         let b = Batcher()
         let d = Draw(batcher: b)
@@ -40,7 +40,7 @@ struct SpriteTests {
     @Test func spriteDefaultsToInheritScaleMode() throws {
         let app = try App(title: "spr-mode", width: 64, height: 64)
         defer { app.destroy() }
-        let s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        let s = try Sprite(png: fixturePath("4x4.png"), on: app.renderer)
         defer { s.destroy() }
         // nil means "inherit the ambient Draw scale mode".
         #expect(s.scaleMode == nil)
@@ -49,7 +49,7 @@ struct SpriteTests {
     @Test func pixelArtSpritePacksTexelSizeIntoVertices() throws {
         let app = try App(title: "spr-pa", width: 64, height: 64)
         defer { app.destroy() }
-        var s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        var s = try Sprite(png: fixturePath("4x4.png"), on: app.renderer)
         defer { s.destroy() }
         s.scaleMode = .pixelArt
         let b = Batcher()
@@ -62,7 +62,7 @@ struct SpriteTests {
     @Test func spritePropertyUsedWhenNoArgOrPush() throws {
         let app = try App(title: "spr-prop", width: 64, height: 64)
         defer { app.destroy() }
-        var s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        var s = try Sprite(png: fixturePath("4x4.png"), on: app.renderer)
         defer { s.destroy() }
         s.scaleMode = .nearest
         let b = Batcher()
@@ -74,7 +74,7 @@ struct SpriteTests {
     @Test func perCallArgOverridesSpriteProperty() throws {
         let app = try App(title: "spr-arg", width: 64, height: 64)
         defer { app.destroy() }
-        var s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        var s = try Sprite(png: fixturePath("4x4.png"), on: app.renderer)
         defer { s.destroy() }
         s.scaleMode = .pixelArt
         let b = Batcher()
@@ -86,7 +86,7 @@ struct SpriteTests {
     @Test func ambientUsedWhenSpriteModeNil() throws {
         let app = try App(title: "spr-amb", width: 64, height: 64)
         defer { app.destroy() }
-        let s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        let s = try Sprite(png: fixturePath("4x4.png"), on: app.renderer)
         defer { s.destroy() }
         let b = Batcher()
         let d = Draw(batcher: b)

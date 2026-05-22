@@ -53,9 +53,9 @@ public struct Font {
 public struct TextEngine {
     public let handle: OpaquePointer
 
-    public init(on device: GPUDevice) throws {
+    public init(on renderer: Renderer) throws {
         try TTFLifecycle.ensureInit()
-        guard let h = TTF_CreateGPUTextEngine(device.handle) else {
+        guard let h = TTF_CreateGPUTextEngine(renderer.device.handle) else {
             throw FontError.createEngineFailed(lastSDLError())
         }
         self.handle = h

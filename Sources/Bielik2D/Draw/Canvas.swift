@@ -7,8 +7,8 @@ public struct Canvas {
     public let width: Int
     public let height: Int
 
-    public init(width: Int, height: Int, format: TextureFormat = .rgba8Unorm, on device: GPUDevice) throws {
-        let tex = try device.makeTexture(
+    public init(width: Int, height: Int, format: TextureFormat = .rgba8Unorm, on renderer: Renderer) throws {
+        let tex = try renderer.device.makeTexture(
             width: width, height: height, format: format,
             usage: [.sampler, .colorTarget]
         )

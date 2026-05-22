@@ -24,7 +24,7 @@ struct TextTests {
     @Test func drawTextEmitsAtLeastOneQuadPerGlyph() throws {
         let app = try App(title: "font-draw", width: 64, height: 64)
         defer { app.destroy() }
-        let engine = try TextEngine(on: app.gpu)
+        let engine = try TextEngine(on: app.renderer)
         defer { engine.destroy() }
         let font = try Font(path: fixturePath("Geneva.ttf"), ptSize: 18)
         defer { font.destroy() }

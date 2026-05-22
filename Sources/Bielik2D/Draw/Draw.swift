@@ -11,9 +11,14 @@ public final class Draw {
     private var layers = StateStack(initial: 0)
     private var scaleModes = StateStack(initial: ScaleMode.default)
 
-    public init(batcher: Batcher, textEngine: Any? = nil) {
+    public init(batcher: Batcher = Batcher(), textEngine: Any? = nil) {
         self.batcher = batcher
         self.textEngine = textEngine
+    }
+
+    /// Reserve vertex storage up front so per-frame queueing never reallocates.
+    public func reserveVertexCapacity(_ n: Int) {
+        batcher.reserveVertexCapacity(n)
     }
 
     // MARK: - Transform

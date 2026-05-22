@@ -27,12 +27,13 @@ public struct Sprite: Equatable {
     /// ambient mode set via `Draw.pushScaleMode`.
     public var scaleMode: ScaleMode?
 
-    public init(png path: String, on device: GPUDevice) throws {
+    public init(png path: String, on renderer: Renderer) throws {
         let image = try SDL3AssetLoader.loadImage(path: path)
-        try self.init(image: image, on: device)
+        try self.init(image: image, on: renderer)
     }
 
-    public init(image: ImageBytes, on device: GPUDevice) throws {
+    public init(image: ImageBytes, on renderer: Renderer) throws {
+        let device = renderer.device
         let w = image.width
         let h = image.height
         let byteCount = image.pixels.count

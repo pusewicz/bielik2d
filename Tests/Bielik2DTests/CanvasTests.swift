@@ -11,7 +11,7 @@ struct CanvasTests {
     @Test func canvasOwnsAColorTargetTexture() throws {
         let app = try App(title: "canvas-make", width: 64, height: 64)
         defer { app.destroy() }
-        let c = try Canvas(width: 128, height: 96, on: app.gpu)
+        let c = try Canvas(width: 128, height: 96, on: app.renderer)
         defer { c.destroy() }
         #expect(c.width == 128)
         #expect(c.height == 96)
@@ -20,7 +20,7 @@ struct CanvasTests {
     @Test func drawCanvasEmitsTexturedQuadReferencingTheCanvas() throws {
         let app = try App(title: "canvas-draw", width: 64, height: 64)
         defer { app.destroy() }
-        let c = try Canvas(width: 32, height: 32, on: app.gpu)
+        let c = try Canvas(width: 32, height: 32, on: app.renderer)
         defer { c.destroy() }
         let b = Batcher()
         let d = Draw(batcher: b)
