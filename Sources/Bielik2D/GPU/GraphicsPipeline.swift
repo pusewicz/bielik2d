@@ -64,7 +64,7 @@ extension GPUDevice {
                              vertexBuffer: VertexBufferDescriptor,
                              colorTargetFormat: TextureFormat,
                              blendMode: BlendMode = .none) throws -> GraphicsPipeline {
-        var attrs: [SDL_GPUVertexAttribute] = vertexBuffer.attributes.map { a in
+        let attrs: [SDL_GPUVertexAttribute] = vertexBuffer.attributes.map { a in
             var x = SDL_GPUVertexAttribute()
             x.location = a.location
             x.buffer_slot = 0
