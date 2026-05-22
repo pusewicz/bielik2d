@@ -66,6 +66,33 @@ public final class Draw {
 
     public var currentScaleMode: ScaleMode { scaleModes.peek }
 
+    // MARK: - Scoped state
+
+    /// Runs `body` with the given state pushed, popping it again on exit (even if
+    /// `body` throws). Any combination of axes can be set in one call; `nil` axes
+    /// are left untouched. Auto-popping makes push/pop imbalance impossible.
+    ///
+    ///     draw.with(scaleMode: .pixelArt) { draw.sprite(player) }
+    ///     draw.with(color: .red, scaleMode: .pixelArt) { ... }
+    @discardableResult
+    public func with<R>(transform: Mat3x2? = nil,
+                        color: Color? = nil,
+                        layer: Int? = nil,
+                        scaleMode: ScaleMode? = nil,
+                        _ body: () throws -> R) rethrows -> R {
+        if let transform { pushTransform(transform) }
+        if let color { pushColor(color) }
+        if let layer { pushLayer(layer) }
+        if let scaleMode { pushScaleMode(scaleMode) }
+        defer {
+            if scaleMode != nil { popScaleMode() }
+            if layer != nil { popLayer() }
+            if color != nil { popColor() }
+            if transform != nil { popTransform() }
+        }
+        return try body()
+    }
+
     // MARK: - Primitives
 
     /// Emits a textured quad in local coordinates. The current transform and

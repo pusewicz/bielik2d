@@ -65,15 +65,12 @@ while app.isRunning {
     // Canvas pass: spinning pink quad in canvas-local coords.
     batcherCanvas.reset()
     batcherCanvas.setTexture(whiteTex.handle)
-    drawCanvas.pushTransform(.translation(x: canvasSize.x / 2, y: canvasSize.y / 2))
-    drawCanvas.pushTransform(.rotation(angleRadians: t))
-    drawCanvas.pushColor(Color(r: 1.0, g: 0.4, b: 0.6))
-    drawCanvas.quad(rect: Rect(x: -90, y: -90, width: 180, height: 180),
-                    uv: Rect(x: 0, y: 0, width: 1, height: 1),
-                    color: SIMD4<Float>(1, 1, 1, 1))
-    drawCanvas.popColor()
-    drawCanvas.popTransform()
-    drawCanvas.popTransform()
+    drawCanvas.with(transform: .translation(x: canvasSize.x / 2, y: canvasSize.y / 2) * .rotation(angleRadians: t),
+                    color: Color(r: 1.0, g: 0.4, b: 0.6)) {
+        drawCanvas.quad(rect: Rect(x: -90, y: -90, width: 180, height: 180),
+                        uv: Rect(x: 0, y: 0, width: 1, height: 1),
+                        color: SIMD4<Float>(1, 1, 1, 1))
+    }
 
     // Main pass: everything else, plus the canvas composited back as a sprite.
     batcher.reset()
@@ -103,12 +100,12 @@ while app.isRunning {
         draw.text(entry.1, font: font, at: SIMD2(x, baseline + 6), color: .white)
     }
 
-    // Spinning offscreen canvas, composited top-right. Wrapped in an ambient
-    // pixel-art push to exercise pushScaleMode/popScaleMode (the canvas inherits
-    // the ambient mode since no per-call mode is given).
-    draw.pushScaleMode(.pixelArt)
-    draw.canvas(canvas, at: SIMD2(windowSize.x - canvasSize.x - 40, 40))
-    draw.popScaleMode()
+    // Spinning offscreen canvas, composited top-right. Wrapped in a `with`
+    // scope so the canvas inherits the ambient pixel-art mode (no per-call mode
+    // given) and the scope auto-pops.
+    draw.with(scaleMode: .pixelArt) {
+        draw.canvas(canvas, at: SIMD2(windowSize.x - canvasSize.x - 40, 40))
+    }
 
     let cmd = try app.gpu.acquireCommandBuffer()
     guard let swap = cmd.acquireSwapchainTexture(for: window, device: app.gpu) else {

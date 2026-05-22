@@ -86,3 +86,42 @@ private let white = SIMD4<Float>(1, 1, 1, 1)
     d.quad(rect: unit, uv: uv, color: white, textureSize: SIMD2(8, 8))
     #expect(b.vertices.first?.attributes == SIMD4<Float>(8, 8, 1, 0))
 }
+
+@Test func withScaleModeAppliesInsideAndRestoresAfter() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.with(scaleMode: .pixelArt) {
+        d.quad(rect: unit, uv: uv, color: white, textureSize: SIMD2(8, 8))
+    }
+    #expect(b.vertices.first?.attributes == SIMD4<Float>(8, 8, 1, 0))
+    #expect(d.currentScaleMode == .linear)   // reverted on scope exit
+}
+
+@Test func withCombinesColorAndScaleModeThenReverts() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.with(color: Color(r: 0.5, g: 0.5, b: 0.5, a: 1.0), scaleMode: .nearest) {
+        d.quad(rect: unit, uv: uv, color: white, textureSize: SIMD2(4, 4))
+    }
+    let v = b.vertices.first!
+    #expect(v.attributes == SIMD4<Float>(4, 4, 2, 0))
+    #expect(abs(v.color.x - 0.5) < 1e-5)
+    #expect(d.currentScaleMode == .linear)        // both axes reverted
+    #expect(d.currentColor == .white)
+}
+
+@Test func withReturnsBodyValue() {
+    let d = Draw(batcher: Batcher())
+    let n = d.with(scaleMode: .pixelArt) { 42 }
+    #expect(n == 42)
+}
+
+@Test func withTransformComposesLikeManualPush() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.with(transform: .translation(x: 10, y: 5)) {
+        d.quad(rect: unit, uv: uv, color: white)
+    }
+    #expect(b.vertices.first?.pos == SIMD2<Float>(10, 5))
+    #expect(d.currentTransform == .identity)   // reverted
+}
