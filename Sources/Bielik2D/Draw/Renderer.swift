@@ -16,6 +16,7 @@ public final class Renderer: RenderBackend {
     private let pipelines: PipelineCache<GraphicsPipeline>
     private let sampler: Sampler
     private let whiteTexture: Texture
+    private let spriteBatch: SpriteBatch
     private var vbuf: Buffer
     private var xfer: TransferBuffer
     private var capacityBytes: Int
@@ -23,6 +24,7 @@ public final class Renderer: RenderBackend {
     init(device: GPUDevice, window: OpaquePointer) throws {
         self.device = device
         self.window = window
+        self.spriteBatch = SpriteBatch(device: device)
         let vs = try Shader.builtin(name: "sprite.vert", stage: .vertex, on: device)
         let fs = try Shader.builtin(name: "sprite.frag", stage: .fragment, on: device)
         self.vertexShader = vs
@@ -78,13 +80,15 @@ public final class Renderer: RenderBackend {
     /// `camera` defaults to an orthographic projection sized to the canvas.
     public func render(_ draw: Draw, to canvas: Canvas, clear: Color? = nil, camera: Camera? = nil) {
         let cam = camera ?? Camera(viewportSize: SIMD2(Float(canvas.width), Float(canvas.height)))
-        let list = DrawList(vertices: draw.batcher.vertices, commands: draw.batcher.commandsSortedByLayer)
+        let list = DrawList(vertices: draw.batcher.vertices,
+                            commands: draw.batcher.commandsSortedByLayer,
+                            spriteInstances: draw.spriteInstances)
         guard let cmd = try? device.acquireCommandBuffer() else { return }
         // cycle: the canvas is sampled (composited) the same frame it's drawn, and
         // across frames while in flight — fresh backing each frame avoids feedback.
         flushList(list, into: canvas.texture, clear: clear, camera: cam, on: cmd, cycleTarget: true)
         cmd.submit()
-        draw.batcher.reset()
+        draw.clearQueue()
     }
 
     // MARK: - Shared flush
@@ -93,13 +97,15 @@ public final class Renderer: RenderBackend {
     /// (binding the white texture for untextured commands). Does not reset any
     /// queue — callers own that.
     private func flushList(_ list: DrawList, into colorTarget: Texture, clear: Color?, camera: Camera, on cmd: CommandBuffer, cycleTarget: Bool = false) {
-        let byteCount = list.vertices.count * MemoryLayout<Vertex>.stride
+        let (vertices, commands) = resolvedGeometry(for: list)
+
+        let byteCount = vertices.count * MemoryLayout<Vertex>.stride
         if byteCount > 0 {
             ensureCapacity(byteCount)
             // cycle: true lets SDL hand us fresh backing if a prior flush this
             // frame is still in flight, so one pooled buffer is safe to reuse.
             xfer.withMappedMemory(cycle: true) { ptr in
-                list.vertices.withUnsafeBytes { src in
+                vertices.withUnsafeBytes { src in
                     ptr.copyMemory(from: src.baseAddress!, byteCount: src.count)
                 }
             }
@@ -114,12 +120,44 @@ public final class Renderer: RenderBackend {
             let pipe = pipelines.get(PipelineKey(shaderID: 0, colorFormat: colorTarget.format, blendMode: .alpha))
             pass.bind(pipe)
             pass.bindVertexBuffer(vbuf)
-            for c in list.commands {
+            for c in commands {
                 let tex = c.state.texture ?? whiteTexture.handle
                 pass.bindFragmentSampler(textureHandle: tex, sampler: sampler)
                 pass.draw(vertexCount: c.vertexCount, firstVertex: c.vertexStart)
             }
         }
+    }
+
+    /// Packs any newly-seen sprites into the atlas, then merges the immediate
+    /// geometry with the resolved sprite quads into one vertex/command stream sorted
+    /// by layer. Within a layer, immediate geometry stays before sprites.
+    private func resolvedGeometry(for list: DrawList) -> (ContiguousArray<Vertex>, [DrawCommand]) {
+        guard !list.spriteInstances.isEmpty else { return (list.vertices, list.commands) }
+
+        // Atlas uploads run on their own command buffer, submitted (and so executed)
+        // before this frame's render pass samples the pages.
+        do {
+            try spriteBatch.defrag(used: Set(list.spriteInstances.map(\.id)))
+        } catch {
+            assertionFailure("atlas defrag failed: \(error)")
+            return (list.vertices, list.commands)
+        }
+
+        let spriteBatcher = Batcher()
+        spriteBatch.resolve(list.spriteInstances, into: spriteBatcher)
+
+        var vertices = list.vertices
+        let base = vertices.count
+        vertices.append(contentsOf: spriteBatcher.vertices)
+
+        var commands = list.commands
+        for c in spriteBatcher.commands {
+            commands.append(DrawCommand(state: c.state,
+                                        vertexStart: c.vertexStart + base,
+                                        vertexCount: c.vertexCount))
+        }
+        commands.sort { $0.state.layer < $1.state.layer }
+        return (vertices, commands)
     }
 
     private func ensureCapacity(_ bytes: Int) {
@@ -139,8 +177,14 @@ public final class Renderer: RenderBackend {
         try Sprite(png: path, on: self)
     }
 
-    public func makeSprite(image: ImageBytes) throws -> Sprite {
-        try Sprite(image: image, on: self)
+    public func makeSprite(image: ImageBytes) -> Sprite {
+        Sprite(image: image, on: self)
+    }
+
+    /// Stores an image's pixels in the atlas and returns its handle. Used by
+    /// `Sprite.init` so a `Sprite` never holds a GPU texture of its own.
+    func register(_ image: ImageBytes) -> SpriteID {
+        spriteBatch.register(image)
     }
 
     public func makeCanvas(width: Int, height: Int, format: TextureFormat = .rgba8Unorm) throws -> Canvas {
@@ -152,6 +196,7 @@ public final class Renderer: RenderBackend {
     }
 
     public func destroy() {
+        spriteBatch.destroy()
         vbuf.destroy()
         xfer.destroy()
         whiteTexture.destroy()

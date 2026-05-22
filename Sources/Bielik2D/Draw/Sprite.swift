@@ -12,11 +12,12 @@ public enum SpriteError: Error, CustomStringConvertible {
     }
 }
 
-/// A textured rectangle. Each Sprite owns its own GPU texture in v0 — a shared
-/// atlas (cute_spritebatch-equivalent) is deferred. Equality identifies which
-/// sprites share a texture so the batcher can merge their draws.
+/// A textured rectangle. The image's pixels live in the renderer's `SpriteBatch`
+/// and are packed into a shared atlas on first draw — the GPU texture stays hidden,
+/// CF-style. A `Sprite` is a lightweight handle plus per-instance draw state
+/// (pivot/scale/opacity/scaleMode); copy it freely and tweak those before drawing.
 public struct Sprite: Equatable {
-    let texture: Texture
+    let id: SpriteID
     public let width: Int
     public let height: Int
     public var pivot: SIMD2<Float>
@@ -29,61 +30,46 @@ public struct Sprite: Equatable {
 
     public init(png path: String, on renderer: Renderer) throws {
         let image = try SDL3AssetLoader.loadImage(path: path)
-        try self.init(image: image, on: renderer)
+        self.init(image: image, on: renderer)
     }
 
-    public init(image: ImageBytes, on renderer: Renderer) throws {
-        let device = renderer.device
-        let w = image.width
-        let h = image.height
-        let byteCount = image.pixels.count
-        let tex = try device.makeTexture(width: w, height: h, format: .rgba8Unorm, usage: .sampler)
-        let xfer = try device.makeTransferBuffer(size: byteCount, usage: .upload)
-        defer { xfer.destroy() }
-        xfer.withMappedMemory { dst in
-            image.pixels.withUnsafeBytes { src in
-                dst.copyMemory(from: src.baseAddress!, byteCount: byteCount)
-            }
-        }
-        let cmd = try device.acquireCommandBuffer()
-        cmd.withCopyPass { copy in
-            copy.upload(from: xfer, to: tex)
-        }
-        cmd.submit()
-
-        self.texture = tex
-        self.width = w
-        self.height = h
+    public init(image: ImageBytes, on renderer: Renderer) {
+        self.id = renderer.register(image)
+        self.width = image.width
+        self.height = image.height
         self.pivot = .zero
         self.scale = SIMD2(1, 1)
         self.opacity = 1
         self.scaleMode = nil
     }
 
-    public func destroy() {
-        texture.destroy()
-    }
-
     public static func == (lhs: Sprite, rhs: Sprite) -> Bool {
-        lhs.texture.handle == rhs.texture.handle
+        lhs.id == rhs.id
     }
 }
 
 extension Draw {
-    /// Draws a sprite at `at` (top-left) in world space, applying the current
-    /// transform, color tint, and the sprite's own scale and opacity. The scale
-    /// mode resolves most-specific-first: the `scaleMode:` argument, then the
-    /// sprite's own `scaleMode`, then the ambient `pushScaleMode` state.
+    /// Queues a sprite drawn at `at` (top-left) in world space, applying the current
+    /// transform, color tint, and the sprite's own scale and opacity. The draw is
+    /// deferred: the renderer resolves it against the atlas at flush. The scale mode
+    /// resolves most-specific-first: the `scaleMode:` argument, then the sprite's own
+    /// `scaleMode`, then the ambient `pushScaleMode` state.
     public func sprite(_ s: Sprite, at: SIMD2<Float> = .zero, scaleMode: ScaleMode? = nil) {
-        batcher.setTexture(s.texture.handle)
         let w = Float(s.width) * s.scale.x
         let h = Float(s.height) * s.scale.y
         let rect = Rect(x: at.x - s.pivot.x, y: at.y - s.pivot.y, width: w, height: h)
-        let uv = Rect(x: 0, y: 0, width: 1, height: 1)
-        let color = SIMD4<Float>(1, 1, 1, s.opacity)
+        let t = currentTransform
+        let tint = currentColor
         let mode = scaleMode ?? s.scaleMode ?? currentScaleMode
-        quad(rect: rect, uv: uv, color: color,
-             scaleMode: mode, textureSize: SIMD2(Float(s.width), Float(s.height)))
+        spriteInstances.append(SpriteInstance(
+            id: s.id,
+            p0: t.transform(SIMD2(rect.minX, rect.minY)),
+            p1: t.transform(SIMD2(rect.maxX, rect.minY)),
+            p2: t.transform(SIMD2(rect.maxX, rect.maxY)),
+            p3: t.transform(SIMD2(rect.minX, rect.maxY)),
+            color: SIMD4(tint.r, tint.g, tint.b, tint.a * s.opacity),
+            scaleData: SIMD4(Float(s.width), Float(s.height), mode.shaderValue, 0),
+            layer: currentLayer))
     }
 }
 #endif

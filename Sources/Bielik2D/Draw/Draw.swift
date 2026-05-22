@@ -3,6 +3,10 @@
 /// push is composed against the current peek so callers think in local space.
 public final class Draw {
     let batcher: Batcher
+    /// Sprites drawn this frame, captured for deferred atlas resolution at flush
+    /// (the native `Renderer` packs and resolves them). Untextured geometry still
+    /// goes straight into the `batcher`.
+    var spriteInstances: [SpriteInstance] = []
     /// Opaque text engine. SDL3 stores a `TextEngine` here; the web backend
     /// stores a `WebTextRasterizer`. The Text extension casts as needed.
     public let textEngine: Any?
@@ -61,6 +65,17 @@ public final class Draw {
     public func popLayer() {
         _ = layers.pop()
         batcher.setLayer(layers.peek)
+    }
+
+    public var currentLayer: Int { layers.peek }
+
+    // MARK: - Queue lifecycle
+
+    /// Clears everything queued this frame (immediate geometry + deferred sprites).
+    /// A flush calls this after handing the queue to a backend.
+    func clearQueue() {
+        batcher.reset()
+        spriteInstances.removeAll(keepingCapacity: true)
     }
 
     // MARK: - Scale mode (ambient filter for textured draws)

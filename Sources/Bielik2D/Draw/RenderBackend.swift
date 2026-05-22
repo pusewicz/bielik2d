@@ -4,10 +4,18 @@
 public struct DrawList {
     public let vertices: ContiguousArray<Vertex>
     public let commands: [DrawCommand]
+    /// Deferred sprite draws awaiting atlas resolution. Internal — only the native
+    /// `Renderer` (which owns the atlas) consumes these; other backends ignore them.
+    let spriteInstances: [SpriteInstance]
 
     public init(vertices: ContiguousArray<Vertex>, commands: [DrawCommand]) {
+        self.init(vertices: vertices, commands: commands, spriteInstances: [])
+    }
+
+    init(vertices: ContiguousArray<Vertex>, commands: [DrawCommand], spriteInstances: [SpriteInstance]) {
         self.vertices = vertices
         self.commands = commands
+        self.spriteInstances = spriteInstances
     }
 }
 
@@ -24,8 +32,10 @@ extension Draw {
     /// (CF's "the flush consumes the queue" semantics). `camera` supplies the
     /// view-projection; `clear`, when set, clears the target first.
     public func flush(through backend: RenderBackend, camera: Camera, clear: Color? = nil) {
-        let list = DrawList(vertices: batcher.vertices, commands: batcher.commandsSortedByLayer)
+        let list = DrawList(vertices: batcher.vertices,
+                            commands: batcher.commandsSortedByLayer,
+                            spriteInstances: spriteInstances)
         backend.render(list, camera: camera, clear: clear)
-        batcher.reset()
+        clearQueue()
     }
 }
