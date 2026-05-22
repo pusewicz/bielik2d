@@ -22,120 +22,112 @@ Bielik2D is a 2D engine inspired by Cute Framework, written in pure Swift 6.3 on
 
 Audio, networking, deep input, coroutines, aseprite, atlas-based spritebatch, text markup effects.
 
+## Status (current)
+
+Phases 0–11 are substantially complete: the engine builds, `Bielik2DDemo` and `Bielik2DBenchmark` run on macOS/Metal, and `swift test` is green. The renderer was reworked into the CF-style hidden-flush API (Phase 13). Remaining work is in "Known gaps / next".
+
 ---
 
-## Phase 0 — Repo bootstrap
+## Phase 0 — Repo bootstrap ✅
 
-- [ ] `BootstrapTests.swift` asserts `Bielik2D.version != ""`.
-- [ ] `.gitignore` (Swift + macOS + `.build/`, `.swiftpm/`, `vendor/.install/`).
-- [ ] `README.md` with install pre-reqs and getting-started.
-- [ ] Minimal `Package.swift`: `Bielik2D` library + `Bielik2DTests` test target. Defer everything else.
-- [ ] `Sources/Bielik2D/Bielik2D.swift` with `public let version`.
-- [ ] `swift test` green.
-- [ ] `git init` + atomic commits.
+- [x] `BootstrapTests.swift` asserts `Bielik2D.version != ""`.
+- [x] `.gitignore` (Swift + macOS + `.build/`, `.swiftpm/`, `vendor/.install/`).
+- [x] `README.md` with install pre-reqs and getting-started.
+- [x] `Package.swift` with library + test + demo + benchmark + web targets.
+- [x] `Sources/Bielik2D/Bielik2D.swift` with `public let version`.
+- [x] `swift test` green; `git init` + atomic commits.
 
-## Phase 1 — System bindings & C shim
+## Phase 1 — System bindings & C shim ✅
 
-- [ ] `SDL3LinkageTests.testInitQuit` — calls `SDL_Init(SDL_INIT_VIDEO)` then `SDL_Quit()`.
-- [ ] `Sources/CSDL3/module.modulemap` → `SDL3/SDL.h`, link `SDL3`.
-- [ ] `Sources/CSDL3Image/module.modulemap` → `SDL3_image/SDL_image.h`.
-- [ ] `Sources/CSDL3TTF/module.modulemap` → `SDL3_ttf/SDL_ttf.h`.
-- [ ] `Sources/CBielik2DSupport/{include/bielik2d_support.h, bielik2d_support.c}` (empty for now; add helpers as needed).
-- [ ] Smoke test passes.
+- [x] `SDL3LinkageTests` smoke test (init/quit).
+- [x] `Sources/CSDL3/module.modulemap` (SDL3 + image + ttf reachable).
+- [x] `Sources/CSDL3Shadercross/module.modulemap` → vendored shadercross.
 
-## Phase 2 — App + Window + GPU device
+## Phase 2 — App + Window + GPU device ✅
 
-- [ ] `AppTests.testMakeAppHeadless` — uses offscreen video driver hint, lifecycle round-trips.
-- [ ] `App.swift` — `Bielik2D.makeApp(title:, width:, height:, options:)`.
-- [ ] `Window.swift`, `Time.swift`.
-- [ ] `GPUDevice.swift` — `SDL_CreateGPUDevice` + `SDL_ClaimWindowForGPUDevice`.
-- [ ] `Swapchain.swift` — present mode, composition.
-- [ ] Event poll loop wired to `isRunning`.
-- [ ] Demo opens a window, clears, closes.
+- [x] App lifecycle (`App(title:width:height:)`, `isRunning`, `update`, `destroy`).
+- [x] `SDL3Platform` window + event poll wired to `isRunning`.
+- [x] `GPUDevice` (`SDL_CreateGPUDevice` + claim) and present-mode control.
 
-## Phase 3 — GPU resource wrappers
+## Phase 3 — GPU resource wrappers ✅ (now internal — see Phase 13)
 
-- [ ] `GPUResourceTests` — roundtrip per resource (no-error asserts).
-- [ ] `Texture` (upload via TransferBuffer + CopyPass).
-- [ ] `Buffer` (vertex / index / storage).
-- [ ] `Sampler`.
-- [ ] `TransferBuffer.withMappedMemory { ptr in … }`.
-- [ ] `CommandBuffer`, `RenderPass`, `CopyPass` — closure-based.
+- [x] `Texture`, `Buffer`, `Sampler`, `TransferBuffer` (with `withMappedMemory`).
+- [x] `CommandBuffer`, `RenderPass`, `CopyPass` closure-based wrappers.
+- [x] `GPUResourceTests` roundtrips.
 
-## Phase 4 — Shader pipeline
+## Phase 4 — Shader pipeline ✅
 
-- [ ] `vendor/SDL_shadercross` + `vendor/SPIRV-Cross` submodules.
-- [ ] `scripts/build-vendor.sh` — CMake build → `vendor/.install/`.
-- [ ] `Sources/CSDL3Shadercross/module.modulemap` → `vendor/.install/include/SDL3_shadercross/SDL_shadercross.h`.
-- [ ] `PipelineCacheTests.testSameDescriptorReturnsSamePipeline` (pure dictionary).
-- [ ] `Shaders/src/builtin_draw.hlsl` (VS + FS, sprite/SDF branch in FS).
-- [ ] `Shaders/build.sh` — `dxc -spirv` → `Sources/Bielik2D/Shaders/*.spv`.
-- [ ] `Shader.swift` — loads SPIR-V via `SDL_ShaderCross_CompileGraphicsShaderFromSPIRV`.
-- [ ] `GraphicsPipeline.swift`, `PipelineCache.swift`.
-- [ ] Demo prints `SDL_GetGPUDeviceDriver()` and creates a no-op pipeline.
+- [x] `vendor/SDL_shadercross` + `scripts/build-vendor.sh`.
+- [x] `Shaders/src/*.hlsl` (sprite + basic) → SPIR-V via `Shaders/build.sh`; WGSL overrides for web.
+- [x] `Shader` (shadercross load), `GraphicsPipeline`, `PipelineCache` (keyed on color format + blend).
 
-## Phase 5 — Unified SDF vertex + Batcher
+## Phase 5 — Unified SDF vertex + Batcher ✅
 
-- [ ] `VertexLayoutTests.testStrideMatchesAttributeOffsets`.
-- [ ] `Vertex.swift` — mirrors CF `CF_Vertex` (pos, uv, n, shape[8], color, radius, stroke, aa, type, alpha, fill, posH, attributes, uvBounds).
-- [ ] `BatcherTests.testStateChangeFlushesCommand`.
-- [ ] `BatcherTests.testNoStateChangeMergesIntoOneCommand`.
-- [ ] `BatcherTests.testLayerOrderingInCommandList`.
-- [ ] `Batcher.swift`, `CommandList.swift`.
-- [ ] `emitQuad(p0, p1, p2, p3, uv0, uv1, color)` helper.
-- [ ] Hardcoded quad with 1×1 white texture shows on screen.
+- [x] `Vertex` with stride/offset asserts (`VertexTests`).
+- [x] `Batcher` with state-change flush + layer sort (`BatcherTests`).
+- [x] quad emit helpers.
 
-## Phase 6 — High-level Draw API
+## Phase 6 — High-level Draw API 🟡
 
-- [ ] `StateStackTests.testPushPopPeek`.
-- [ ] `DrawAPITests.testTransformStackComposition`.
-- [ ] `DrawAPITests.testColorTintMultipliesIntoVertex`.
-- [ ] Generic `StateStack<T>`.
-- [ ] `Draw.pushTransform/popTransform`, `pushColor/popColor`, `pushScissor`, `pushViewport`, `pushLayer`, `pushShapeAA`, `pushBlendState`.
-- [ ] `Camera` — view, projection, uploaded as `viewProjection` uniform per frame.
+- [x] Generic `StateStack<T>` (`StateStackTests`).
+- [x] `pushTransform` / `pushColor` / `pushLayer` (+ `pushScaleMode`, `with { }` — see below).
+- [ ] `pushScissor` / `pushViewport` / `pushShapeAA` / `pushBlendState` — not yet implemented.
+- [x] `Camera` view/projection, applied as the per-flush view-projection.
 
-## Phase 7 — Sprite loading
+## Phase 7 — Sprite loading ✅
 
-- [ ] `Tests/Bielik2DTests/fixtures/4x4.png` committed.
-- [ ] `SpriteTests.testLoadPNGFromFixture` (RGBA pixel asserts).
-- [ ] `SpriteTests.testDrawEmitsOneTexturedQuad`.
-- [ ] `Sprite` struct + `Sprite(png:)` via `IMG_Load`.
-- [ ] `Draw.sprite(_:)`.
+- [x] `4x4.png` fixture + `SpriteTests`.
+- [x] `Sprite(png:)` (now `renderer.makeSprite(png:)`), `Draw.sprite(_:)`.
 
-## Phase 8 — SDF primitives
+## Phase 8 — SDF primitives 🟡
 
-- [ ] `PrimitivesTests` — one assertion per shape (circle, box, line, capsule, polyline, tri) on the unified SDF vertex.
-- [ ] `emitSDFQuad(type:, params:)` shared helper.
-- [ ] `Draw.circle`, `circleFill`, `box`, `boxFill`, `line`, `capsule`, `polyline`, `tri`.
-- [ ] Demo shows a circle outline + rounded box + line.
+- [x] `circleFill`, `line`, `box` (`PrimitivesTests`).
+- [ ] outline `circle`, `boxFill`, `capsule`, `polyline`, `tri`, rounded box — not yet implemented.
 
-## Phase 9 — Canvases (render-to-texture)
+## Phase 9 — Canvases (render-to-texture) ✅
 
-- [ ] `CanvasTests.testRenderToSwapsActiveTarget`.
-- [ ] `Canvas(width:, height:, format:, msaaSamples:)`.
-- [ ] `Canvas.renderTo { … }` swaps the active render target.
-- [ ] `Draw.canvas(_:)` samples canvas as sprite.
-- [ ] Demo renders sprite into a canvas and composites it back.
+- [x] `Canvas(width:height:format:)` (now `renderer.makeCanvas`).
+- [x] `renderer.render(_:to: canvas)` flush + `Draw.canvas(_:)` composite (`CanvasTests`).
 
-## Phase 10 — Text rendering (SDL3_ttf + TTF_GPUTextEngine)
+## Phase 10 — Text rendering (SDL3_ttf + TTF_GPUTextEngine) ✅
 
-- [ ] `Tests/Bielik2DTests/fixtures/<font>.ttf` committed.
-- [ ] `FontTests.testOpenFontFromFixture`.
-- [ ] `TextTests.testDrawTextEmitsQuadsForEachGlyph`.
-- [ ] `TTF_Init()` in app init.
-- [ ] `Font(path:, ptSize:)`.
-- [ ] One `TTF_GPUTextEngine` bound to our device.
-- [ ] `Draw.text(_:, at:, font:)` → `TTF_CreateText` → `TTF_GetGPUTextDrawData` → batched quads.
-- [ ] Cache `TTF_Text` keyed by (font, content).
+- [x] `Geneva.ttf` fixture + `FontTests` / `TextTests`.
+- [x] `Font`, `TextEngine` (now `renderer.makeTextEngine`), `Draw.text(_:font:at:)`, cached `Label`.
 
-## Phase 11 — Demo polish
+## Phase 11 — Demo polish ✅
 
-- [ ] `Bielik2DDemo/main.swift` — spinning sprite + circle outline + bouncing text + canvas effect.
-- [ ] Fill in missing math edge cases as discovered (`Mat3x2.invert` near-singular, etc.).
-- [ ] `swift test` fully green, `swift run Bielik2DDemo` at 60 fps with vsync.
+- [x] `Bielik2DDemo`: spinning canvas effect + circle + line + text + pixel-art sprite row.
+- [x] `swift test` green; demo runs on Metal.
 
-## Phase 12 — Hygiene
+## Phase 12 — Hygiene 🟡
 
+- [x] GitHub Actions `swift build && swift test` (`.github/workflows/ci.yml`).
+- [x] README getting-started.
 - [ ] `.swift-format` config.
-- [ ] GitHub Actions `swift build && swift test` on macOS.
-- [ ] README screenshots and getting-started.
+- [ ] README screenshots.
+
+---
+
+## Done since the v0 plan
+
+- [x] **Pixel-art scale mode** — `ScaleMode { nearest, linear, pixelArt }`, a port of SDL_SCALEMODE_PIXELART's `GetPixelArtUV` into the sprite shaders (HLSL + hand-written WGSL). Carried per-vertex; nearest emulated in-shader (no extra sampler).
+- [x] **Scale-mode cascade** — `pushScaleMode`/`popScaleMode` ambient stack + per-call `scaleMode:` override on `Draw.sprite`/`Draw.canvas`; `Sprite.scaleMode` optional. Precedence: call arg → sprite → ambient → linear.
+- [x] **`Draw.with { }`** — scoped, auto-popping state (transform/color/layer/scaleMode in one call).
+
+## Phase 13 — CF-style renderer (hide the Batcher) ✅
+
+- [x] `Renderer` owns the GPU flush (pipeline cache, white texture, sampler, pooled vertex buffer).
+- [x] `RenderBackend` protocol + `Draw.flush(through:)` + `DrawList` snapshot — the seam that lets two backends (SDL, WebGPU) render without seeing the Batcher.
+- [x] `App.drawOntoScreen(_:)` (swapchain) + `Renderer.render(_:to: canvas)` (offscreen); one queue consumed per flush.
+- [x] Untextured geometry binds a default white texture at flush (no more demo-side white-texture dance).
+- [x] `Sprite`/`Canvas`/`TextEngine` created via `Renderer`; demo + benchmark drop all hand-rolled GPU plumbing.
+- [x] `Batcher` + SDL GPU wrappers made internal; public surface = App/Renderer/Draw/Canvas/Camera/Sprite/text + geometry types.
+- [~] WebGPU demo ported to `WebRenderer: RenderBackend` — **unverified** (no wasm toolchain locally).
+
+## Known gaps / next
+
+- Remaining CF draw-state stacks: `pushScissor`, `pushViewport`, `pushShapeAA`, `pushBlendState`.
+- Remaining SDF primitives: outline `circle`, `boxFill`, `capsule`, `polyline`, `tri`, rounded box.
+- Naming: our `ScaleMode` vs CF's `cf_draw_push_filter` (NEAREST/LINEAR/SMOOTH) — consider aligning.
+- Verify the WASI/WebGPU build end-to-end (the `WebRenderer` port is untested).
+- `.swift-format` config + README screenshots (Phase 12 tail).
