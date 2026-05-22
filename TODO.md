@@ -20,7 +20,7 @@ Bielik2D is a 2D engine inspired by Cute Framework, written in pure Swift 6.3 on
 
 ## Out of v0 scope
 
-Audio, networking, deep input, coroutines, aseprite, atlas-based spritebatch, text markup effects.
+Audio, networking, deep input, coroutines, aseprite, text markup effects.
 
 ## Status (current)
 
@@ -124,6 +124,21 @@ Phases 0–11 are substantially complete: the engine builds, `Bielik2DDemo` and 
 - [x] `Batcher` + SDL GPU wrappers made internal; public surface = App/Renderer/Draw/Canvas/Camera/Sprite/text + geometry types.
 - [~] WebGPU demo ported to `WebRenderer: RenderBackend` — **unverified** (no wasm toolchain locally).
 
+## Phase 14 — Auto-atlaser (CF-style spritebatch) 🟡
+
+CF's online sprite compiler (`cute_spritebatch.h`): push sprites each frame, inject them into rolling
+texture atlases at runtime so draw calls collapse to ~one per page. Textures stay hidden; CPU pixels
+live in RAM so images are packed lazily on first use. Deferred (push → defrag → resolve at flush),
+**no LRU decay yet**. Native-only for now (the web backend keeps its own sprite path).
+
+- [ ] `SkylinePacker` — pure skyline bottom-left rectangle packer (no GPU).
+- [ ] Sub-region texture upload on `CopyPass` (place a small image at x,y within a big atlas page).
+- [ ] `SpriteBatch` + `AtlasPage` — RAM pixel registry, rolling 2048² pages, `defrag` (pack new +
+      upload sub-regions, 1px gutter, dedicated page for oversized images), resolve instances → quads.
+- [ ] Hide textures: `Sprite` becomes an opaque handle (id + dims); `Renderer` owns the `SpriteBatch`;
+      `Draw.sprite` defers; `Renderer` resolves at flush (concat + stable-sort by layer).
+- [ ] `uvBounds` clamp + local-space pixel-art/nearest snapping in the sprite shaders (HLSL + WGSL).
+
 ## Known gaps / next
 
 - Remaining CF draw-state stacks: `pushScissor`, `pushViewport`, `pushShapeAA`, `pushBlendState`.
@@ -131,3 +146,7 @@ Phases 0–11 are substantially complete: the engine builds, `Bielik2DDemo` and 
 - Naming: our `ScaleMode` vs CF's `cf_draw_push_filter` (NEAREST/LINEAR/SMOOTH) — consider aligning.
 - Verify the WASI/WebGPU build end-to-end (the `WebRenderer` port is untested).
 - `.swift-format` config + README screenshots (Phase 12 tail).
+- Auto-atlaser follow-ups (Phase 14): LRU decay/eviction (`tick()` + space reclaim / page compaction);
+  unified ordered draw buffer so sprites interleave with shapes/text within a layer by call order;
+  put the white pixel in the atlas so SDF shapes batch with sprites; sprite animation frames
+  (`play(...)`); web-backend atlas parity.
