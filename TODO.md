@@ -24,7 +24,7 @@ Audio, networking, deep input, coroutines, aseprite, text markup effects.
 
 ## Status (current)
 
-Phases 0–11 are substantially complete: the engine builds, `Bielik2DDemo` and `Bielik2DBenchmark` run on macOS/Metal, and `swift test` is green. The renderer was reworked into the CF-style hidden-flush API (Phase 13). Remaining work is in "Known gaps / next".
+Phases 0–11 are substantially complete: the engine builds, `Bielik2DDemo` and `Bielik2DBenchmark` run on macOS/Metal, and `swift test` is green. The renderer was reworked into the CF-style hidden-flush API (Phase 13), then gained the runtime auto-atlaser (Phase 14) — sprites are packed into shared atlas pages so draw calls collapse to ~one per page. Remaining work is in "Known gaps / next".
 
 ---
 
@@ -124,20 +124,21 @@ Phases 0–11 are substantially complete: the engine builds, `Bielik2DDemo` and 
 - [x] `Batcher` + SDL GPU wrappers made internal; public surface = App/Renderer/Draw/Canvas/Camera/Sprite/text + geometry types.
 - [~] WebGPU demo ported to `WebRenderer: RenderBackend` — **unverified** (no wasm toolchain locally).
 
-## Phase 14 — Auto-atlaser (CF-style spritebatch) 🟡
+## Phase 14 — Auto-atlaser (CF-style spritebatch) ✅
 
 CF's online sprite compiler (`cute_spritebatch.h`): push sprites each frame, inject them into rolling
 texture atlases at runtime so draw calls collapse to ~one per page. Textures stay hidden; CPU pixels
 live in RAM so images are packed lazily on first use. Deferred (push → defrag → resolve at flush),
 **no LRU decay yet**. Native-only for now (the web backend keeps its own sprite path).
 
-- [ ] `SkylinePacker` — pure skyline bottom-left rectangle packer (no GPU).
-- [ ] Sub-region texture upload on `CopyPass` (place a small image at x,y within a big atlas page).
-- [ ] `SpriteBatch` + `AtlasPage` — RAM pixel registry, rolling 2048² pages, `defrag` (pack new +
+- [x] `SkylinePacker` — pure skyline bottom-left rectangle packer (no GPU).
+- [x] Sub-region texture upload on `CopyPass` (place a small image at x,y within a big atlas page).
+- [x] `SpriteBatch` + `AtlasPage` — RAM pixel registry, rolling 2048² pages, `defrag` (pack new +
       upload sub-regions, 1px gutter, dedicated page for oversized images), resolve instances → quads.
-- [ ] Hide textures: `Sprite` becomes an opaque handle (id + dims); `Renderer` owns the `SpriteBatch`;
+- [x] Hide textures: `Sprite` becomes an opaque handle (id + dims); `Renderer` owns the `SpriteBatch`;
       `Draw.sprite` defers; `Renderer` resolves at flush (concat + stable-sort by layer).
-- [ ] `uvBounds` clamp + local-space pixel-art/nearest snapping in the sprite shaders (HLSL + WGSL).
+- [x] `uvBounds` clamp + local-space pixel-art/nearest snapping in the sprite shaders (HLSL + WGSL).
+- [x] `Renderer.lastDrawCallCount` diagnostic; benchmark HUD shows the collapse.
 
 ## Known gaps / next
 
