@@ -14,6 +14,7 @@ struct FragInput {
     @location(5) aa: f32,
     @location(6) fill: f32,
     @location(7) scaleData: vec4<f32>,   // (texelW, texelH, scaleMode, _)
+    @location(8) uvBounds: vec4<f32>,    // atlas sub-rect (minU,minV,maxU,maxV); zero = none
 }
 
 @group(1) @binding(0) var mainTex: texture_2d<f32>;
@@ -38,11 +39,30 @@ fn main(in: FragInput) -> @location(0) vec4<f32> {
     if (t == 0) {
         let texSize = in.scaleData.xy;
         let mode = i32(round(in.scaleData.z));
+        let bounds = in.uvBounds;                       // atlas sub-rect, or zero
+        let atlased = (bounds.z > bounds.x) && (bounds.w > bounds.y);
+        let origin = select(vec2<f32>(0.0), bounds.xy, atlased);
+        let extent = select(vec2<f32>(1.0), bounds.zw - bounds.xy, atlased);
         var uv = in.uv;
-        if (mode == 1 && texSize.x > 0.0) {
-            uv = getPixelArtUV(in.uv, texSize, uvDdx, uvDdy);     // pixel art
-        } else if (mode == 2 && texSize.x > 0.0) {
-            uv = (floor(in.uv * texSize) + 0.5) / texSize;        // nearest
+        // Snap in the sprite's own [0,1] space (matching a standalone texture),
+        // then map back into the atlas sub-rect.
+        if ((mode == 1 || mode == 2) && texSize.x > 0.0) {
+            let local = (uv - origin) / extent;
+            let localDdx = uvDdx / extent;
+            let localDdy = uvDdy / extent;
+            var snapped: vec2<f32>;
+            if (mode == 1) {
+                snapped = getPixelArtUV(local, texSize, localDdx, localDdy);
+            } else {
+                snapped = (floor(local * texSize) + 0.5) / texSize;   // nearest
+            }
+            uv = origin + snapped * extent;
+        }
+        // Keep sampling inside the sub-rect: clamp to a half-texel inset so linear
+        // taps never cross into a neighbouring sprite on the same page.
+        if (atlased) {
+            let half_texel = 0.5 * extent / texSize;
+            uv = clamp(uv, bounds.xy + half_texel, bounds.zw - half_texel);
         }
         let tex = textureSampleGrad(mainTex, mainSampler, uv, uvDdx, uvDdy);
         return tex * in.color;

@@ -15,6 +15,7 @@ struct PSInput {
     float  aa        : TEXCOORD4;
     float  fill      : TEXCOORD5;
     float4 scaleData : TEXCOORD6;   // (texelW, texelH, scaleMode, _)
+    float4 uvBounds  : TEXCOORD7;   // atlas sub-rect (minU,minV,maxU,maxV); zero = none
 };
 
 Texture2D    mainTex     : register(t0, space2);
@@ -41,11 +42,27 @@ float4 main(PSInput input) : SV_Target {
     if (t == 0) {
         float2 texSize = input.scaleData.xy;
         int mode = (int)round(input.scaleData.z);
+        float4 bounds = input.uvBounds;                  // atlas sub-rect, or zero
+        bool atlased = (bounds.z > bounds.x) && (bounds.w > bounds.y);
+        float2 origin = atlased ? bounds.xy : float2(0.0, 0.0);
+        float2 extent = atlased ? (bounds.zw - bounds.xy) : float2(1.0, 1.0);
         float2 uv = input.uv;
-        if (mode == 1 && texSize.x > 0.0) {
-            uv = GetPixelArtUV(input.uv, texSize, uvDdx, uvDdy);   // pixel art
-        } else if (mode == 2 && texSize.x > 0.0) {
-            uv = (floor(input.uv * texSize) + 0.5) / texSize;      // nearest
+        // Snap in the sprite's own [0,1] space (matching a standalone texture),
+        // then map back into the atlas sub-rect.
+        if ((mode == 1 || mode == 2) && texSize.x > 0.0) {
+            float2 local = (uv - origin) / extent;
+            float2 localDdx = uvDdx / extent;
+            float2 localDdy = uvDdy / extent;
+            float2 snapped = (mode == 1)
+                ? GetPixelArtUV(local, texSize, localDdx, localDdy)
+                : (floor(local * texSize) + 0.5) / texSize;       // nearest
+            uv = origin + snapped * extent;
+        }
+        // Keep sampling inside the sub-rect: clamp to a half-texel inset so linear
+        // taps never cross into a neighbouring sprite on the same page.
+        if (atlased) {
+            float2 halfTexel = 0.5 * extent / texSize;
+            uv = clamp(uv, bounds.xy + halfTexel, bounds.zw - halfTexel);
         }
         float4 tex = mainTex.SampleGrad(mainSampler, uv, uvDdx, uvDdy);
         return tex * input.color;

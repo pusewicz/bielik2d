@@ -16,13 +16,14 @@ private func approx(_ a: Float, _ b: Float) -> Bool { abs(a - b) < 1e-5 }
     #expect(approx(p.uvRect.height, 20 / P))
 }
 
-@Test func placementInsetsUVBoundsByHalfATexel() {
+@Test func placementUVBoundsCoverTheFullSubRect() {
+    // uvBounds carries the sub-rect's (minU,minV,maxU,maxV); the shader derives the
+    // half-texel clamp from it plus the sprite's texel size.
     let p = Placement.compute(slotX: 10, slotY: 10, imageW: 30, imageH: 20,
                               pageW: 256, pageH: 256, gutter: 1, page: 0)
     let P: Float = 256
-    let half = 0.5 / P
-    #expect(approx(p.uvBounds.x, 11 / P + half))   // minU
-    #expect(approx(p.uvBounds.y, 11 / P + half))   // minV
-    #expect(approx(p.uvBounds.z, 41 / P - half))   // maxU = (11+30)/P
-    #expect(approx(p.uvBounds.w, 31 / P - half))   // maxV = (11+20)/P
+    #expect(approx(p.uvBounds.x, 11 / P))   // minU
+    #expect(approx(p.uvBounds.y, 11 / P))   // minV
+    #expect(approx(p.uvBounds.z, 41 / P))   // maxU = (11+30)/P
+    #expect(approx(p.uvBounds.w, 31 / P))   // maxV = (11+20)/P
 }

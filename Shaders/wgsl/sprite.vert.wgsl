@@ -20,6 +20,7 @@ struct VertexInput {
     @location(7) alpha: f32,
     @location(8) fill: f32,
     @location(10) attributes: vec4<f32>,   // (texelW, texelH, scaleMode, _)
+    @location(11) uvBounds: vec4<f32>,     // atlas sub-rect (minU,minV,maxU,maxV); zero = none
 }
 
 struct VertexOutput {
@@ -32,6 +33,7 @@ struct VertexOutput {
     @location(5) aa: f32,
     @location(6) fill: f32,
     @location(7) scaleData: vec4<f32>,
+    @location(8) uvBounds: vec4<f32>,
 }
 
 @vertex
@@ -46,5 +48,6 @@ fn main(in: VertexInput) -> VertexOutput {
     out.aa = in.aa;
     out.fill = in.fill;
     out.scaleData = in.attributes;
+    out.uvBounds = in.uvBounds;
     return out;
 }

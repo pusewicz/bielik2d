@@ -28,6 +28,7 @@ struct VSOutput {
     float  aa        : TEXCOORD4;
     float  fill      : TEXCOORD5;
     float4 scaleData : TEXCOORD6;   // (texelW, texelH, scaleMode, _) for sprite sampling
+    float4 uvBounds  : TEXCOORD7;   // atlas sub-rect (minU,minV,maxU,maxV); zero = none
 };
 
 cbuffer CameraUBO : register(b0, space1) {
@@ -45,5 +46,6 @@ VSOutput main(VSInput input) {
     o.aa = input.aa;
     o.fill = input.fill;
     o.scaleData = input.attributes;
+    o.uvBounds = input.uvBounds;
     return o;
 }

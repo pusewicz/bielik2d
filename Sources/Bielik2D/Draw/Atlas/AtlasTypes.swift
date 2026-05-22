@@ -3,12 +3,13 @@
 typealias SpriteID = Int
 
 /// Where a registered image ended up once packed: which page, its normalized UV
-/// sub-rect, and a half-texel-inset clip rect (`uvBounds`) the shader clamps to so
-/// linear filtering and pixel-art snapping never leak into neighbouring sprites.
+/// sub-rect, and `uvBounds` carrying that sub-rect's (minU,minV,maxU,maxV). The
+/// shader uses `uvBounds` to do pixel-art snapping in the sprite's local space and
+/// to clamp sampling (inset by half a texel) so it never leaks into a neighbour.
 struct Placement: Equatable {
     let page: Int
     let uvRect: Rect
-    let uvBounds: SIMD4<Float>  // (minU, minV, maxU, maxV), inset by half a texel
+    let uvBounds: SIMD4<Float>  // (minU, minV, maxU, maxV) of the sub-rect
 
     /// Computes the placement for an image whose pixels sit at
     /// (slotX + gutter, slotY + gutter) on a `pageW`×`pageH` page.
@@ -20,12 +21,10 @@ struct Placement: Equatable {
         let minV = Float(py) / Float(pageH)
         let maxU = Float(px + imageW) / Float(pageW)
         let maxV = Float(py + imageH) / Float(pageH)
-        let halfU = 0.5 / Float(pageW)
-        let halfV = 0.5 / Float(pageH)
         return Placement(
             page: page,
             uvRect: Rect(x: minU, y: minV, width: maxU - minU, height: maxV - minV),
-            uvBounds: SIMD4(minU + halfU, minV + halfV, maxU - halfU, maxV - halfV)
+            uvBounds: SIMD4(minU, minV, maxU, maxV)
         )
     }
 }
