@@ -62,8 +62,6 @@ while app.isRunning {
 
     let t = Float(Date().timeIntervalSince(startTime))
 
-    let center = SIMD2<Float>(windowSize.x / 2, windowSize.y / 2)
-
     // Canvas pass: spinning pink quad in canvas-local coords.
     batcherCanvas.reset()
     batcherCanvas.setTexture(whiteTex.handle)
@@ -81,18 +79,36 @@ while app.isRunning {
     batcher.reset()
     batcher.setTexture(whiteTex.handle)
 
-    draw.circleFill(center: center + SIMD2(220, 0), radius: 60,
-                    color: Color(r: 0.4, g: 0.8, b: 1.0))
-    draw.line(from: center + SIMD2(-300, -150), to: center + SIMD2(-300, 150),
-              thickness: 8, color: Color(r: 1.0, g: 0.9, b: 0.3))
     draw.text("Hello, Bielik!", font: font, at: SIMD2<Float>(40, 40), color: .white)
+    draw.circleFill(center: SIMD2(120, 150), radius: 50, color: Color(r: 0.4, g: 0.8, b: 1.0))
+    draw.line(from: SIMD2(210, 110), to: SIMD2(360, 190),
+              thickness: 8, color: Color(r: 1.0, g: 0.9, b: 0.3))
 
-    // PNG sprite bouncing along the bottom.
-    let bounce: Float = abs(sin(t * 2)) * 60
-    draw.sprite(player, at: SIMD2<Float>(120, windowSize.y - 150 - bounce))
+    // Pixel-art showcase: one sprite upscaled three ways. The scale sweeps
+    // through non-integer factors, so nearest visibly shimmers, linear stays
+    // soft, and pixelArt stays crisp *and* stable — the whole point of
+    // SDL_SCALEMODE_PIXELART.
+    let upscale: Float = 2.75 + sin(t) * 0.75
+    var demoSprite = player
+    demoSprite.scale = SIMD2(upscale, upscale)
+    let spriteW = Float(player.width) * upscale
+    let spriteH = Float(player.height) * upscale
+    let gap: Float = 70
+    let baseline = windowSize.y - 70
+    let startX = (windowSize.x - (spriteW * 3 + gap * 2)) / 2
+    let modes: [(ScaleMode, String)] = [(.nearest, "nearest"), (.linear, "linear"), (.pixelArt, "pixelArt")]
+    for (i, entry) in modes.enumerated() {
+        let x = startX + Float(i) * (spriteW + gap)
+        draw.sprite(demoSprite, at: SIMD2(x, baseline - spriteH), scaleMode: entry.0)
+        draw.text(entry.1, font: font, at: SIMD2(x, baseline + 6), color: .white)
+    }
 
-    // Composite the offscreen canvas back at the window center.
-    draw.canvas(canvas, at: center - canvasSize / 2)
+    // Spinning offscreen canvas, composited top-right. Wrapped in an ambient
+    // pixel-art push to exercise pushScaleMode/popScaleMode (the canvas inherits
+    // the ambient mode since no per-call mode is given).
+    draw.pushScaleMode(.pixelArt)
+    draw.canvas(canvas, at: SIMD2(windowSize.x - canvasSize.x - 40, 40))
+    draw.popScaleMode()
 
     let cmd = try app.gpu.acquireCommandBuffer()
     guard let swap = cmd.acquireSwapchainTexture(for: window, device: app.gpu) else {
