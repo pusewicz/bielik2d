@@ -37,3 +37,25 @@ private let white = SIMD4<Float>(1, 1, 1, 1)
     #expect(abs(c.z - 1.0) < 1e-5)
     #expect(abs(c.w - 0.8) < 1e-5)
 }
+
+@Test func defaultQuadCarriesNoScalePayload() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.quad(rect: unit, uv: uv, color: white)
+    // linear (0) with no texture size: every existing draw stays byte-identical.
+    #expect(b.vertices.allSatisfy { $0.attributes == .zero })
+}
+
+@Test func pixelArtQuadPacksTexelSizeAndMode() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.quad(rect: unit, uv: uv, color: white, scaleMode: .pixelArt, textureSize: SIMD2(32, 48))
+    #expect(b.vertices.allSatisfy { $0.attributes == SIMD4<Float>(32, 48, 1, 0) })
+}
+
+@Test func nearestQuadPacksModeTwo() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.quad(rect: unit, uv: uv, color: white, scaleMode: .nearest, textureSize: SIMD2(16, 16))
+    #expect(b.vertices.first?.attributes == SIMD4<Float>(16, 16, 2, 0))
+}

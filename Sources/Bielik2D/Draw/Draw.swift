@@ -54,8 +54,12 @@ public final class Draw {
     // MARK: - Primitives
 
     /// Emits a textured quad in local coordinates. The current transform and
-    /// color tint are applied during emit.
-    public func quad(rect: Rect, uv: Rect, color: SIMD4<Float>) {
+    /// color tint are applied during emit. `scaleMode` + `textureSize` (source
+    /// texture dimensions in texels) ride along in the vertex so the fragment
+    /// shader can do pixel-art / nearest sampling; the defaults preserve plain
+    /// linear sampling for untextured quads.
+    public func quad(rect: Rect, uv: Rect, color: SIMD4<Float>,
+                     scaleMode: ScaleMode = .default, textureSize: SIMD2<Float> = .zero) {
         let t = transforms.peek
         let tint = colors.peek
         let c = SIMD4<Float>(color.x * tint.r,
@@ -66,6 +70,7 @@ public final class Draw {
         let p1 = t.transform(SIMD2(rect.maxX, rect.minY))
         let p2 = t.transform(SIMD2(rect.maxX, rect.maxY))
         let p3 = t.transform(SIMD2(rect.minX, rect.maxY))
-        batcher.emitQuadCorners(p0: p0, p1: p1, p2: p2, p3: p3, uv: uv, color: c)
+        let scaleData = SIMD4<Float>(textureSize.x, textureSize.y, scaleMode.shaderValue, 0)
+        batcher.emitQuadCorners(p0: p0, p1: p1, p2: p2, p3: p3, uv: uv, color: c, scaleData: scaleData)
     }
 }

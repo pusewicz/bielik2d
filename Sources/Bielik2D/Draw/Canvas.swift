@@ -30,10 +30,13 @@ extension CommandBuffer {
 
 extension Draw {
     /// Samples a canvas as a textured quad. Apply the current transform/color.
-    public func canvas(_ c: Canvas, at: SIMD2<Float> = .zero) {
+    /// Pass `scaleMode: .pixelArt` to upscale a low-res canvas crisply — the
+    /// classic "render to a small target, blow it up to the window" pattern.
+    public func canvas(_ c: Canvas, at: SIMD2<Float> = .zero, scaleMode: ScaleMode = .default) {
         batcher.setTexture(c.texture.handle)
         let rect = Rect(x: at.x, y: at.y, width: Float(c.width), height: Float(c.height))
-        quad(rect: rect, uv: Rect(x: 0, y: 0, width: 1, height: 1), color: SIMD4<Float>(1, 1, 1, 1))
+        quad(rect: rect, uv: Rect(x: 0, y: 0, width: 1, height: 1), color: SIMD4<Float>(1, 1, 1, 1),
+             scaleMode: scaleMode, textureSize: SIMD2(Float(c.width), Float(c.height)))
     }
 }
 #endif

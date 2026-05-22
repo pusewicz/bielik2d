@@ -55,14 +55,15 @@ public final class Batcher {
         flushIfChange { $0.layer = l }
     }
 
-    public func emitQuad(rect: Rect, uv: Rect, color: SIMD4<Float>) {
+    public func emitQuad(rect: Rect, uv: Rect, color: SIMD4<Float>, scaleData: SIMD4<Float> = .zero) {
         emitQuadCorners(
             p0: SIMD2<Float>(rect.minX, rect.minY),
             p1: SIMD2<Float>(rect.maxX, rect.minY),
             p2: SIMD2<Float>(rect.maxX, rect.maxY),
             p3: SIMD2<Float>(rect.minX, rect.maxY),
             uv: uv,
-            color: color
+            color: color,
+            scaleData: scaleData
         )
     }
 
@@ -73,17 +74,17 @@ public final class Batcher {
     }
 
     public func emitQuadCorners(p0: SIMD2<Float>, p1: SIMD2<Float>, p2: SIMD2<Float>, p3: SIMD2<Float>,
-                                uv: Rect, color: SIMD4<Float>) {
+                                uv: Rect, color: SIMD4<Float>, scaleData: SIMD4<Float> = .zero) {
         let u0 = SIMD2<Float>(uv.minX, uv.minY)
         let u1 = SIMD2<Float>(uv.maxX, uv.minY)
         let u2 = SIMD2<Float>(uv.maxX, uv.maxY)
         let u3 = SIMD2<Float>(uv.minX, uv.maxY)
-        vertices.append(Vertex(pos: p0, uv: u0, color: color))
-        vertices.append(Vertex(pos: p1, uv: u1, color: color))
-        vertices.append(Vertex(pos: p2, uv: u2, color: color))
-        vertices.append(Vertex(pos: p0, uv: u0, color: color))
-        vertices.append(Vertex(pos: p2, uv: u2, color: color))
-        vertices.append(Vertex(pos: p3, uv: u3, color: color))
+        vertices.append(Vertex(pos: p0, uv: u0, color: color, attributes: scaleData))
+        vertices.append(Vertex(pos: p1, uv: u1, color: color, attributes: scaleData))
+        vertices.append(Vertex(pos: p2, uv: u2, color: color, attributes: scaleData))
+        vertices.append(Vertex(pos: p0, uv: u0, color: color, attributes: scaleData))
+        vertices.append(Vertex(pos: p2, uv: u2, color: color, attributes: scaleData))
+        vertices.append(Vertex(pos: p3, uv: u3, color: color, attributes: scaleData))
     }
 
     public var commandsSortedByLayer: [DrawCommand] {

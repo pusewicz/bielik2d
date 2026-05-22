@@ -36,4 +36,25 @@ struct SpriteTests {
         #expect(b.vertices.first?.pos == SIMD2<Float>(10, 20))
         #expect(b.vertices[2].pos == SIMD2<Float>(10 + 4, 20 + 4))
     }
+
+    @Test func spriteDefaultsToLinearScaleMode() throws {
+        let app = try App(title: "spr-mode", width: 64, height: 64)
+        defer { app.destroy() }
+        let s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        defer { s.destroy() }
+        #expect(s.scaleMode == .linear)
+    }
+
+    @Test func pixelArtSpritePacksTexelSizeIntoVertices() throws {
+        let app = try App(title: "spr-pa", width: 64, height: 64)
+        defer { app.destroy() }
+        var s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        defer { s.destroy() }
+        s.scaleMode = .pixelArt
+        let b = Batcher()
+        let d = Draw(batcher: b)
+        d.sprite(s, at: .zero)
+        // texelW, texelH = sprite size; mode 1 = pixelArt.
+        #expect(b.vertices.allSatisfy { $0.attributes == SIMD4<Float>(4, 4, 1, 0) })
+    }
 }

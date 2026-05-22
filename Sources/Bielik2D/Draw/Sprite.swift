@@ -22,6 +22,9 @@ public struct Sprite: Equatable {
     public var pivot: SIMD2<Float>
     public var scale: SIMD2<Float>
     public var opacity: Float
+    /// How this sprite is filtered when drawn off its native size. Set once and
+    /// forget, like `SDL_SetTextureScaleMode`. Defaults to linear.
+    public var scaleMode: ScaleMode
 
     public init(png path: String, on device: GPUDevice) throws {
         let image = try SDL3AssetLoader.loadImage(path: path)
@@ -52,6 +55,7 @@ public struct Sprite: Equatable {
         self.pivot = .zero
         self.scale = SIMD2(1, 1)
         self.opacity = 1
+        self.scaleMode = .default
     }
 
     public func destroy() {
@@ -73,7 +77,8 @@ extension Draw {
         let rect = Rect(x: at.x - s.pivot.x, y: at.y - s.pivot.y, width: w, height: h)
         let uv = Rect(x: 0, y: 0, width: 1, height: 1)
         let color = SIMD4<Float>(1, 1, 1, s.opacity)
-        quad(rect: rect, uv: uv, color: color)
+        quad(rect: rect, uv: uv, color: color,
+             scaleMode: s.scaleMode, textureSize: SIMD2(Float(s.width), Float(s.height)))
     }
 }
 #endif

@@ -14,7 +14,7 @@ public struct Vertex {
     public var alpha: Float
     public var fill: Float                 // 1 = filled, 0 = stroked
     public var posH: SIMD2<Float>          // homogeneous position (reserved)
-    public var attributes: SIMD4<Float>    // user-shader payload (reserved)
+    public var attributes: SIMD4<Float>    // sprite scale payload: (texelW, texelH, scaleMode, _)
     public var uvBounds: SIMD4<Float>      // uv clip rect (reserved)
 
     public init(pos: SIMD2<Float> = .zero,
