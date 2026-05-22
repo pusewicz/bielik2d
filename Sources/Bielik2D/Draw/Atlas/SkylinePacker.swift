@@ -68,7 +68,7 @@ struct SkylinePacker {
     private mutating func addLevel(at i: Int, x: Int, y: Int, width w: Int, height h: Int) {
         nodes.insert(Node(x: x, y: y + h, width: w), at: i)
 
-        var j = i + 1
+        let j = i + 1
         while j < nodes.count {
             let prevRight = nodes[j - 1].x + nodes[j - 1].width
             guard nodes[j].x < prevRight else { break }
