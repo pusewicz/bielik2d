@@ -53,6 +53,29 @@ struct GPUResourceTests {
         #expect(tex.height == 4)
     }
 
+    @Test func textureUploadsToASubRegion() throws {
+        let app = try App(title: "subtex", width: 64, height: 64)
+        defer { app.destroy() }
+        // A 4×4 RGBA image placed into a sub-region of an 8×8 atlas page.
+        let sub = 4
+        let pixels = [UInt8](repeating: 0xCD, count: sub * sub * 4)
+        let xfer = try app.gpu.makeTransferBuffer(size: pixels.count, usage: .upload)
+        defer { xfer.destroy() }
+        xfer.withMappedMemory { $0.copyMemory(from: pixels, byteCount: pixels.count) }
+
+        let page = try app.gpu.makeTexture(width: 8, height: 8, format: .rgba8Unorm, usage: .sampler)
+        defer { page.destroy() }
+
+        let cmd = try app.gpu.acquireCommandBuffer()
+        cmd.withCopyPass { copy in
+            copy.upload(from: xfer, to: page,
+                        region: (x: 2, y: 1, width: sub, height: sub), pixelsPerRow: sub)
+        }
+        cmd.submit()
+        #expect(page.width == 8)
+        #expect(page.height == 8)
+    }
+
     @Test func renderPassClearsAColorTarget() throws {
         let app = try App(title: "rp", width: 64, height: 64)
         defer { app.destroy() }

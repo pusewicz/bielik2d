@@ -70,5 +70,27 @@ extension CopyPass {
         dstRegion.d = 1
         SDL_UploadToGPUTexture(handle, &srcInfo, &dstRegion, cycle)
     }
+
+    /// Uploads tightly-packed RGBA8 pixels into a sub-rectangle of `dst`. Used by
+    /// the atlas to drop one sprite's image into its slot on a shared page.
+    /// `pixelsPerRow` is the source image's width (its row stride in texels).
+    public func upload(from src: TransferBuffer, offset srcOffset: Int = 0,
+                       to dst: Texture,
+                       region: (x: Int, y: Int, width: Int, height: Int),
+                       pixelsPerRow: Int, cycle: Bool = false) {
+        var srcInfo = SDL_GPUTextureTransferInfo()
+        srcInfo.transfer_buffer = src.handle
+        srcInfo.offset = UInt32(srcOffset)
+        srcInfo.pixels_per_row = UInt32(pixelsPerRow)
+        srcInfo.rows_per_layer = UInt32(region.height)
+        var dstRegion = SDL_GPUTextureRegion()
+        dstRegion.texture = dst.handle
+        dstRegion.x = UInt32(region.x)
+        dstRegion.y = UInt32(region.y)
+        dstRegion.w = UInt32(region.width)
+        dstRegion.h = UInt32(region.height)
+        dstRegion.d = 1
+        SDL_UploadToGPUTexture(handle, &srcInfo, &dstRegion, cycle)
+    }
 }
 #endif
