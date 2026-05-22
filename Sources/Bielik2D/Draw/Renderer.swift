@@ -43,7 +43,9 @@ public final class Renderer: RenderBackend {
         let white = try device.makeTexture(width: 1, height: 1, usage: .sampler)
         let px: [UInt8] = [0xFF, 0xFF, 0xFF, 0xFF]
         let pxXfer = try device.makeTransferBuffer(size: 4, usage: .upload)
-        pxXfer.withMappedMemory { $0.copyMemory(from: px, byteCount: 4) }
+        pxXfer.withMappedMemory { dst in
+            px.withUnsafeBytes { src in dst.copyMemory(from: src.baseAddress!, byteCount: 4) }
+        }
         let initCmd = try device.acquireCommandBuffer()
         initCmd.withCopyPass { $0.upload(from: pxXfer, to: white) }
         initCmd.submit()
@@ -78,7 +80,9 @@ public final class Renderer: RenderBackend {
         let cam = camera ?? Camera(viewportSize: SIMD2(Float(canvas.width), Float(canvas.height)))
         let list = DrawList(vertices: draw.batcher.vertices, commands: draw.batcher.commandsSortedByLayer)
         guard let cmd = try? device.acquireCommandBuffer() else { return }
-        flushList(list, into: canvas.texture, clear: clear, camera: cam, on: cmd)
+        // cycle: the canvas is sampled (composited) the same frame it's drawn, and
+        // across frames while in flight — fresh backing each frame avoids feedback.
+        flushList(list, into: canvas.texture, clear: clear, camera: cam, on: cmd, cycleTarget: true)
         cmd.submit()
         draw.batcher.reset()
     }
@@ -88,7 +92,7 @@ public final class Renderer: RenderBackend {
     /// Uploads the list's vertices, runs one render pass into `colorTarget`
     /// (binding the white texture for untextured commands). Does not reset any
     /// queue — callers own that.
-    private func flushList(_ list: DrawList, into colorTarget: Texture, clear: Color?, camera: Camera, on cmd: CommandBuffer) {
+    private func flushList(_ list: DrawList, into colorTarget: Texture, clear: Color?, camera: Camera, on cmd: CommandBuffer, cycleTarget: Bool = false) {
         let byteCount = list.vertices.count * MemoryLayout<Vertex>.stride
         if byteCount > 0 {
             ensureCapacity(byteCount)
@@ -105,7 +109,7 @@ public final class Renderer: RenderBackend {
         }
 
         cmd.pushVertexUniform(camera.viewProjection)
-        cmd.withRenderPass(colorTarget: colorTarget, clear: clear) { pass in
+        cmd.withRenderPass(colorTarget: colorTarget, clear: clear, cycle: cycleTarget) { pass in
             guard byteCount > 0 else { return }
             let pipe = pipelines.get(PipelineKey(shaderID: 0, colorFormat: colorTarget.format, blendMode: .alpha))
             pass.bind(pipe)

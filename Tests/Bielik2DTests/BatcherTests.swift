@@ -46,3 +46,14 @@ private let white = SIMD4<Float>(1, 1, 1, 1)
     #expect(b.vertices.isEmpty)
     #expect(b.commands.isEmpty)
 }
+
+@Test func resetClearsTextureState() {
+    // A flushed frame must not leak its texture into the next, or an untextured
+    // draw (or render-to-canvas) inherits it — e.g. the canvas samples itself.
+    let b = Batcher()
+    b.setTexture(t1)
+    b.emitQuad(rect: unit, uv: uv, color: white)
+    b.reset()
+    b.emitQuad(rect: unit, uv: uv, color: white)
+    #expect(b.commands.first?.state.texture == nil)
+}

@@ -95,6 +95,11 @@ final class Batcher {
         vertices.removeAll(keepingCapacity: true)
         closedCommands.removeAll(keepingCapacity: true)
         currentStart = 0
+        // Reset the draw-call state too, so a flushed frame doesn't leak its last
+        // texture into the next. Without this, an untextured draw (or a render-to-
+        // canvas) inherits the previous frame's texture — e.g. the canvas ends up
+        // sampling itself, producing feedback.
+        state = DrawCallState()
     }
 
     private func closeRun() {

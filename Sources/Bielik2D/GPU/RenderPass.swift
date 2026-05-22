@@ -38,11 +38,16 @@ struct RenderPass {
 extension CommandBuffer {
     public func withRenderPass(colorTarget: Texture,
                                clear: Color? = nil,
+                               cycle: Bool = false,
                                _ body: (RenderPass) -> Void) {
         var info = SDL_GPUColorTargetInfo()
         info.texture = colorTarget.handle
         info.load_op = clear == nil ? SDL_GPU_LOADOP_LOAD : SDL_GPU_LOADOP_CLEAR
         info.store_op = SDL_GPU_STOREOP_STORE
+        // Cycle an offscreen target that's also sampled elsewhere: it hands us a
+        // fresh backing each frame so rendering into it can't race a still-in-flight
+        // sampler reading last frame's contents (otherwise the canvas feeds back).
+        info.cycle = cycle
         if let c = clear {
             info.clear_color = SDL_FColor(r: c.r, g: c.g, b: c.b, a: c.a)
         }
