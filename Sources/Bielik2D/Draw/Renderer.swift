@@ -21,6 +21,10 @@ public final class Renderer: RenderBackend {
     private var xfer: TransferBuffer
     private var capacityBytes: Int
 
+    /// Draw calls issued by the last flush — handy for confirming the atlas is
+    /// collapsing many sprites into few binds.
+    public private(set) var lastDrawCallCount: Int = 0
+
     init(device: GPUDevice, window: OpaquePointer) throws {
         self.device = device
         self.window = window
@@ -98,6 +102,7 @@ public final class Renderer: RenderBackend {
     /// queue — callers own that.
     private func flushList(_ list: DrawList, into colorTarget: Texture, clear: Color?, camera: Camera, on cmd: CommandBuffer, cycleTarget: Bool = false) {
         let (vertices, commands) = resolvedGeometry(for: list)
+        lastDrawCallCount = commands.count
 
         let byteCount = vertices.count * MemoryLayout<Vertex>.stride
         if byteCount > 0 {

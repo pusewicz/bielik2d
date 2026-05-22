@@ -151,9 +151,10 @@ while app.isRunning {
         let avgMs = frameTimer.averageFrameSeconds * 1000.0
         let maxMs = frameTimer.maxFrameSeconds * 1000.0
         let fps = frameTimer.fps
-        let label = String(format: "%.0f fps  %.2f ms (peak %.2f)  %d %@  vsync:%@  [Space swap, V cycle vsync, +/- ±%d]",
+        let label = String(format: "%.0f fps  %.2f ms (peak %.2f)  %d %@  %d calls  vsync:%@  [Space swap, V cycle vsync, +/- ±%d]",
                            fps, avgMs, maxMs, entities.count,
                            mode == .shapes ? "shapes" : "sprites",
+                           app.renderer.lastDrawCallCount,
                            presentLabels[presentIndex],
                            countStep)
         hudLabel.setString(label)
