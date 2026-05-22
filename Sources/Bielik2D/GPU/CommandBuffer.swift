@@ -1,7 +1,7 @@
 #if canImport(CSDL3)
 import CSDL3
 
-public struct CommandBuffer {
+struct CommandBuffer {
     public let handle: OpaquePointer
 
     public func submit() {

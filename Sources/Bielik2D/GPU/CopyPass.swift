@@ -1,7 +1,7 @@
 #if canImport(CSDL3)
 import CSDL3
 
-public struct CopyPass {
+struct CopyPass {
     public let handle: OpaquePointer
 
     public func upload(from src: TransferBuffer, offset srcOffset: Int = 0,

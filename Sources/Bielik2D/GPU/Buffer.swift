@@ -13,7 +13,7 @@ public struct BufferUsage: OptionSet, Sendable {
     public static let computeStorageWrite = BufferUsage(rawValue: SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE)
 }
 
-public struct Buffer {
+struct Buffer {
     public let handle: OpaquePointer
     public let size: Int
     let device: OpaquePointer

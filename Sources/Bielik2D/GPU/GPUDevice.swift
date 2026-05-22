@@ -41,7 +41,7 @@ public enum GPUError: Error, CustomStringConvertible {
     }
 }
 
-public final class GPUDevice {
+final class GPUDevice {
     public let handle: OpaquePointer
     private(set) weak var claimedWindow: AnyObject?
 

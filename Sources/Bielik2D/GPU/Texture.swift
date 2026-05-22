@@ -20,7 +20,7 @@ public struct TextureUsage: OptionSet, Sendable {
     public static let graphicsStorageRead = TextureUsage(rawValue: SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ)
 }
 
-public struct Texture {
+struct Texture {
     public let handle: OpaquePointer
     public let width: Int
     public let height: Int

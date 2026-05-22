@@ -16,7 +16,7 @@ public enum SpriteError: Error, CustomStringConvertible {
 /// atlas (cute_spritebatch-equivalent) is deferred. Equality identifies which
 /// sprites share a texture so the batcher can merge their draws.
 public struct Sprite: Equatable {
-    public let texture: Texture
+    let texture: Texture
     public let width: Int
     public let height: Int
     public var pivot: SIMD2<Float>

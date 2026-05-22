@@ -3,7 +3,7 @@
 /// can draw into it via `cmd.renderTo(canvas) { pass in … }` and then sample
 /// it back into another render pass with `Draw.canvas(_:at:)`.
 public struct Canvas {
-    public let texture: Texture
+    let texture: Texture
     public let width: Int
     public let height: Int
 

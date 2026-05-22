@@ -13,7 +13,7 @@ public enum TransferBufferUsage {
     }
 }
 
-public struct TransferBuffer {
+struct TransferBuffer {
     public let handle: OpaquePointer
     public let size: Int
     let device: OpaquePointer

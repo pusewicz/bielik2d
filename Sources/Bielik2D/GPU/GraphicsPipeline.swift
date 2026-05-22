@@ -49,7 +49,7 @@ extension BlendMode {
     }
 }
 
-public struct GraphicsPipeline {
+struct GraphicsPipeline {
     public let handle: OpaquePointer
     let device: OpaquePointer
 

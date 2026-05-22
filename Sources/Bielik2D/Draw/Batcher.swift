@@ -20,7 +20,7 @@ public struct DrawCommand: Equatable {
 
 /// Accumulates vertices and emits a `DrawCommand` whenever the active state changes.
 /// Pure data — no GPU contact, so it's unit-testable without a device.
-public final class Batcher {
+final class Batcher {
     public private(set) var vertices: ContiguousArray<Vertex> = []
     private var closedCommands: [DrawCommand] = []
     public private(set) var state: DrawCallState = DrawCallState()

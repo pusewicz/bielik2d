@@ -2,7 +2,7 @@
 /// stacks for the things callers care about (transform, color, layer). Each
 /// push is composed against the current peek so callers think in local space.
 public final class Draw {
-    public let batcher: Batcher
+    let batcher: Batcher
     /// Opaque text engine. SDL3 stores a `TextEngine` here; the web backend
     /// stores a `WebTextRasterizer`. The Text extension casts as needed.
     public let textEngine: Any?
@@ -11,7 +11,13 @@ public final class Draw {
     private var layers = StateStack(initial: 0)
     private var scaleModes = StateStack(initial: ScaleMode.default)
 
-    public init(batcher: Batcher = Batcher(), textEngine: Any? = nil) {
+    public init(textEngine: Any? = nil) {
+        self.batcher = Batcher()
+        self.textEngine = textEngine
+    }
+
+    /// Internal seam for tests that inspect the queued geometry directly.
+    init(batcher: Batcher, textEngine: Any? = nil) {
         self.batcher = batcher
         self.textEngine = textEngine
     }

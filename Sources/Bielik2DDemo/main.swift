@@ -5,7 +5,7 @@ let windowSize = SIMD2<Float>(1280, 720)
 let unit = Rect(x: 0, y: 0, width: 1, height: 1)
 
 let app = try App(title: "Bielik2D Demo", width: Int(windowSize.x), height: Int(windowSize.y))
-print("GPU driver: \(app.gpu.driverName)")
+print("GPU driver: \(app.driverName)")
 
 // All GPU resources come from the renderer — no pipelines, buffers, or samplers
 // in user code anymore.

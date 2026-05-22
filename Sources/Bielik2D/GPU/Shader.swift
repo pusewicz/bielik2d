@@ -27,7 +27,7 @@ public enum ShaderError: Error, CustomStringConvertible {
     }
 }
 
-public struct Shader {
+struct Shader {
     public let handle: OpaquePointer
     let device: OpaquePointer
 

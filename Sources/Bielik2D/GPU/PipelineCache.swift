@@ -5,7 +5,7 @@ public enum BlendMode: Hashable, Sendable {
     case premultipliedAlpha
 }
 
-public struct PipelineKey: Hashable, Sendable {
+struct PipelineKey: Hashable, Sendable {
     public var shaderID: Int
     public var colorFormat: TextureFormat
     public var blendMode: BlendMode
@@ -17,7 +17,7 @@ public struct PipelineKey: Hashable, Sendable {
     }
 }
 
-public final class PipelineCache<Value> {
+final class PipelineCache<Value> {
     private var entries: [PipelineKey: Value] = [:]
     private let build: (PipelineKey) -> Value
 

@@ -135,9 +135,8 @@ func runDemo() async throws {
         "usage": .number(Double(GPUBufferUsage.vertex | GPUBufferUsage.copyDst)),
     ])).object!
 
-    let batcher = Batcher()
-    batcher.reserveVertexCapacity(maxVertexCount)
-    let draw = Draw(batcher: batcher)
+    let draw = Draw()
+    draw.reserveVertexCapacity(maxVertexCount)
 
     // Pre-rasterise the static label and build a matching bind group + quad.
     let label = WebTextRasterizer.rasterize("Hello, Bielik!", fontCSS: "32px -apple-system, sans-serif")!
@@ -183,7 +182,6 @@ func runDemo() async throws {
     DemoState.bindGroup0 = bindGroup0
     DemoState.bindGroup1 = bindGroup1
 
-    let clear = ClearColor(r: 0.10, g: 0.12, b: 0.18, a: 1.0)
     let cx = Float(platform.size.x) * 0.5
     let cy = Float(platform.size.y) * 0.5
     let halfW = Float(spriteW) * 0.5
@@ -191,46 +189,77 @@ func runDemo() async throws {
     let white = SIMD4<Float>(1, 1, 1, 1)
     let spriteUV = Rect(x: 0, y: 0, width: 1, height: 1)
 
-    platform.run { _ in
-        batcher.reset()
+    // The WebGPU backend is a RenderBackend, so the demo queues into a Draw and
+    // flushes through it — identical to the native path, just a different backend.
+    let webRenderer = WebRenderer(
+        backend: backend, pipeline: pipeline,
+        vertexBuffer: vertexBuffer, maxVertexCount: maxVertexCount,
+        bindGroup0: bindGroup0, bindGroup1: bindGroup1,
+        labelBindGroup: labelBindGroup, labelBuffer: labelBuffer,
+        labelVertexCount: labelVertexCount
+    )
 
-        // Sprite (textured quad, shape=0 by Vertex default).
-        batcher.emitQuad(
+    platform.run { _ in
+        // Sprite (textured quad).
+        draw.quad(
             rect: Rect(x: cx - halfW, y: cy - halfH, width: halfW * 2, height: halfH * 2),
             uv: spriteUV,
             color: white
         )
-
         // SDF circle to the right of the sprite.
-        draw.circleFill(
-            center: SIMD2(cx + halfW + 120, cy),
-            radius: 60,
-            color: Color(r: 0.4, g: 0.8, b: 1.0)
-        )
-
+        draw.circleFill(center: SIMD2(cx + halfW + 120, cy), radius: 60, color: Color(r: 0.4, g: 0.8, b: 1.0))
         // SDF line below the sprite.
-        draw.line(
-            from: SIMD2(cx - 220, cy + halfH + 80),
-            to: SIMD2(cx + 220, cy + halfH + 80),
-            thickness: 8,
-            color: Color(r: 1.0, g: 0.9, b: 0.3)
-        )
+        draw.line(from: SIMD2(cx - 220, cy + halfH + 80), to: SIMD2(cx + 220, cy + halfH + 80),
+                  thickness: 8, color: Color(r: 1.0, g: 0.9, b: 0.3))
 
-        let vertexCount = batcher.vertices.count
-        if vertexCount > 0 && vertexCount <= maxVertexCount {
-            batcher.vertices.withUnsafeBytes { ptr in
+        draw.flush(through: webRenderer, camera: camera, clear: Color(r: 0.10, g: 0.12, b: 0.18))
+    }
+}
+
+/// Bridges Bielik2D's `Draw` to the WebGPU backend. Uploads the queued geometry
+/// to its vertex buffer and issues the sprite/SDF batch plus the static label.
+final class WebRenderer: RenderBackend {
+    let backend: WebGPURenderBackend
+    let pipeline: JSObject
+    let vertexBuffer: JSObject
+    let maxVertexCount: Int
+    let bindGroup0: JSObject
+    let bindGroup1: JSObject
+    let labelBindGroup: JSObject
+    let labelBuffer: JSObject
+    let labelVertexCount: Int
+
+    init(backend: WebGPURenderBackend, pipeline: JSObject, vertexBuffer: JSObject, maxVertexCount: Int,
+         bindGroup0: JSObject, bindGroup1: JSObject, labelBindGroup: JSObject, labelBuffer: JSObject,
+         labelVertexCount: Int) {
+        self.backend = backend
+        self.pipeline = pipeline
+        self.vertexBuffer = vertexBuffer
+        self.maxVertexCount = maxVertexCount
+        self.bindGroup0 = bindGroup0
+        self.bindGroup1 = bindGroup1
+        self.labelBindGroup = labelBindGroup
+        self.labelBuffer = labelBuffer
+        self.labelVertexCount = labelVertexCount
+    }
+
+    func render(_ list: DrawList, camera: Camera, clear: Color?) {
+        let n = list.vertices.count
+        if n > 0 && n <= maxVertexCount {
+            list.vertices.withUnsafeBytes { ptr in
                 let bytes = Array(ptr.bindMemory(to: UInt8.self))
                 _ = backend.queue.writeBuffer!(vertexBuffer, 0, JSTypedArray<UInt8>(bytes).jsObject)
             }
         }
-
-        backend.frame(clear: clear) { pass in
+        let cc = ClearColor(r: Double(clear?.r ?? 0), g: Double(clear?.g ?? 0),
+                            b: Double(clear?.b ?? 0), a: Double(clear?.a ?? 1))
+        backend.frame(clear: cc) { pass in
             _ = pass.setPipeline!(pipeline)
             _ = pass.setBindGroup!(0, bindGroup0)
             // Sprite + SDF batch.
             _ = pass.setBindGroup!(1, bindGroup1)
             _ = pass.setVertexBuffer!(0, vertexBuffer)
-            _ = pass.draw!(vertexCount)
+            if n > 0 { _ = pass.draw!(n) }
             // Label.
             _ = pass.setBindGroup!(1, labelBindGroup)
             _ = pass.setVertexBuffer!(0, labelBuffer)

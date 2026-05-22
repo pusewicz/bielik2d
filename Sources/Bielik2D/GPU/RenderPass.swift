@@ -1,7 +1,7 @@
 #if canImport(CSDL3)
 import CSDL3
 
-public struct RenderPass {
+struct RenderPass {
     public let handle: OpaquePointer
 
     public func bind(_ pipeline: GraphicsPipeline) {

@@ -34,7 +34,7 @@ public enum SamplerAddressMode {
     }
 }
 
-public struct Sampler {
+struct Sampler {
     public let handle: OpaquePointer
     let device: OpaquePointer
 

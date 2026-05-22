@@ -14,7 +14,7 @@ public enum AppError: Error, CustomStringConvertible {
 }
 
 public final class App {
-    public let gpu: GPUDevice
+    let gpu: GPUDevice
     public let renderer: Renderer
     let platform: SDL3Platform
 
