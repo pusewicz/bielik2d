@@ -59,3 +59,30 @@ private let white = SIMD4<Float>(1, 1, 1, 1)
     d.quad(rect: unit, uv: uv, color: white, scaleMode: .nearest, textureSize: SIMD2(16, 16))
     #expect(b.vertices.first?.attributes == SIMD4<Float>(16, 16, 2, 0))
 }
+
+@Test func pushedScaleModeAppliesToQuad() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.pushScaleMode(.pixelArt)
+    d.quad(rect: unit, uv: uv, color: white, textureSize: SIMD2(8, 8))
+    #expect(b.vertices.first?.attributes == SIMD4<Float>(8, 8, 1, 0))
+}
+
+@Test func perCallScaleModeOverridesPushed() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.pushScaleMode(.pixelArt)
+    d.quad(rect: unit, uv: uv, color: white, scaleMode: .nearest, textureSize: SIMD2(8, 8))
+    #expect(b.vertices.first?.attributes == SIMD4<Float>(8, 8, 2, 0))
+}
+
+@Test func popScaleModeRestoresPrevious() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.pushScaleMode(.pixelArt)
+    d.pushScaleMode(.nearest)
+    d.popScaleMode()
+    #expect(d.currentScaleMode == .pixelArt)
+    d.quad(rect: unit, uv: uv, color: white, textureSize: SIMD2(8, 8))
+    #expect(b.vertices.first?.attributes == SIMD4<Float>(8, 8, 1, 0))
+}

@@ -37,12 +37,13 @@ struct SpriteTests {
         #expect(b.vertices[2].pos == SIMD2<Float>(10 + 4, 20 + 4))
     }
 
-    @Test func spriteDefaultsToLinearScaleMode() throws {
+    @Test func spriteDefaultsToInheritScaleMode() throws {
         let app = try App(title: "spr-mode", width: 64, height: 64)
         defer { app.destroy() }
         let s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
         defer { s.destroy() }
-        #expect(s.scaleMode == .linear)
+        // nil means "inherit the ambient Draw scale mode".
+        #expect(s.scaleMode == nil)
     }
 
     @Test func pixelArtSpritePacksTexelSizeIntoVertices() throws {
@@ -56,5 +57,41 @@ struct SpriteTests {
         d.sprite(s, at: .zero)
         // texelW, texelH = sprite size; mode 1 = pixelArt.
         #expect(b.vertices.allSatisfy { $0.attributes == SIMD4<Float>(4, 4, 1, 0) })
+    }
+
+    @Test func spritePropertyUsedWhenNoArgOrPush() throws {
+        let app = try App(title: "spr-prop", width: 64, height: 64)
+        defer { app.destroy() }
+        var s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        defer { s.destroy() }
+        s.scaleMode = .nearest
+        let b = Batcher()
+        let d = Draw(batcher: b)
+        d.sprite(s, at: .zero)
+        #expect(b.vertices.first?.attributes == SIMD4<Float>(4, 4, 2, 0))
+    }
+
+    @Test func perCallArgOverridesSpriteProperty() throws {
+        let app = try App(title: "spr-arg", width: 64, height: 64)
+        defer { app.destroy() }
+        var s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        defer { s.destroy() }
+        s.scaleMode = .pixelArt
+        let b = Batcher()
+        let d = Draw(batcher: b)
+        d.sprite(s, at: .zero, scaleMode: .nearest)
+        #expect(b.vertices.first?.attributes == SIMD4<Float>(4, 4, 2, 0))
+    }
+
+    @Test func ambientUsedWhenSpriteModeNil() throws {
+        let app = try App(title: "spr-amb", width: 64, height: 64)
+        defer { app.destroy() }
+        let s = try Sprite(png: fixturePath("4x4.png"), on: app.gpu)
+        defer { s.destroy() }
+        let b = Batcher()
+        let d = Draw(batcher: b)
+        d.pushScaleMode(.pixelArt)
+        d.sprite(s, at: .zero)
+        #expect(b.vertices.first?.attributes == SIMD4<Float>(4, 4, 1, 0))
     }
 }

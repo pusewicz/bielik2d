@@ -23,8 +23,9 @@ public struct Sprite: Equatable {
     public var scale: SIMD2<Float>
     public var opacity: Float
     /// How this sprite is filtered when drawn off its native size. Set once and
-    /// forget, like `SDL_SetTextureScaleMode`. Defaults to linear.
-    public var scaleMode: ScaleMode
+    /// forget, like `SDL_SetTextureScaleMode`. `nil` (the default) inherits the
+    /// ambient mode set via `Draw.pushScaleMode`.
+    public var scaleMode: ScaleMode?
 
     public init(png path: String, on device: GPUDevice) throws {
         let image = try SDL3AssetLoader.loadImage(path: path)
@@ -55,7 +56,7 @@ public struct Sprite: Equatable {
         self.pivot = .zero
         self.scale = SIMD2(1, 1)
         self.opacity = 1
-        self.scaleMode = .default
+        self.scaleMode = nil
     }
 
     public func destroy() {
@@ -69,16 +70,19 @@ public struct Sprite: Equatable {
 
 extension Draw {
     /// Draws a sprite at `at` (top-left) in world space, applying the current
-    /// transform, color tint, and the sprite's own scale and opacity.
-    public func sprite(_ s: Sprite, at: SIMD2<Float> = .zero) {
+    /// transform, color tint, and the sprite's own scale and opacity. The scale
+    /// mode resolves most-specific-first: the `scaleMode:` argument, then the
+    /// sprite's own `scaleMode`, then the ambient `pushScaleMode` state.
+    public func sprite(_ s: Sprite, at: SIMD2<Float> = .zero, scaleMode: ScaleMode? = nil) {
         batcher.setTexture(s.texture.handle)
         let w = Float(s.width) * s.scale.x
         let h = Float(s.height) * s.scale.y
         let rect = Rect(x: at.x - s.pivot.x, y: at.y - s.pivot.y, width: w, height: h)
         let uv = Rect(x: 0, y: 0, width: 1, height: 1)
         let color = SIMD4<Float>(1, 1, 1, s.opacity)
+        let mode = scaleMode ?? s.scaleMode ?? currentScaleMode
         quad(rect: rect, uv: uv, color: color,
-             scaleMode: s.scaleMode, textureSize: SIMD2(Float(s.width), Float(s.height)))
+             scaleMode: mode, textureSize: SIMD2(Float(s.width), Float(s.height)))
     }
 }
 #endif

@@ -9,6 +9,7 @@ public final class Draw {
     private var transforms = StateStack(initial: Mat3x2.identity)
     private var colors = StateStack(initial: Color.white)
     private var layers = StateStack(initial: 0)
+    private var scaleModes = StateStack(initial: ScaleMode.default)
 
     public init(batcher: Batcher, textEngine: Any? = nil) {
         self.batcher = batcher
@@ -51,15 +52,30 @@ public final class Draw {
         batcher.setLayer(layers.peek)
     }
 
+    // MARK: - Scale mode (ambient filter for textured draws)
+
+    /// Sets the ambient scale mode for subsequent textured draws. A sprite's own
+    /// `scaleMode`, or a per-call `scaleMode:` argument, still takes precedence.
+    public func pushScaleMode(_ mode: ScaleMode) {
+        scaleModes.push(mode)
+    }
+
+    public func popScaleMode() {
+        _ = scaleModes.pop()
+    }
+
+    public var currentScaleMode: ScaleMode { scaleModes.peek }
+
     // MARK: - Primitives
 
     /// Emits a textured quad in local coordinates. The current transform and
-    /// color tint are applied during emit. `scaleMode` + `textureSize` (source
-    /// texture dimensions in texels) ride along in the vertex so the fragment
-    /// shader can do pixel-art / nearest sampling; the defaults preserve plain
-    /// linear sampling for untextured quads.
+    /// color tint are applied during emit. `scaleMode` (nil = inherit the pushed
+    /// ambient mode) + `textureSize` (source texture dimensions in texels) ride
+    /// along in the vertex so the fragment shader can do pixel-art / nearest
+    /// sampling. Untextured quads leave `textureSize` zero, which the shader
+    /// treats as plain sampling regardless of mode.
     public func quad(rect: Rect, uv: Rect, color: SIMD4<Float>,
-                     scaleMode: ScaleMode = .default, textureSize: SIMD2<Float> = .zero) {
+                     scaleMode: ScaleMode? = nil, textureSize: SIMD2<Float> = .zero) {
         let t = transforms.peek
         let tint = colors.peek
         let c = SIMD4<Float>(color.x * tint.r,
@@ -70,7 +86,8 @@ public final class Draw {
         let p1 = t.transform(SIMD2(rect.maxX, rect.minY))
         let p2 = t.transform(SIMD2(rect.maxX, rect.maxY))
         let p3 = t.transform(SIMD2(rect.minX, rect.maxY))
-        let scaleData = SIMD4<Float>(textureSize.x, textureSize.y, scaleMode.shaderValue, 0)
+        let mode = scaleMode ?? scaleModes.peek
+        let scaleData = SIMD4<Float>(textureSize.x, textureSize.y, mode.shaderValue, 0)
         batcher.emitQuadCorners(p0: p0, p1: p1, p2: p2, p3: p3, uv: uv, color: c, scaleData: scaleData)
     }
 }
