@@ -57,3 +57,14 @@ private let white = SIMD4<Float>(1, 1, 1, 1)
     b.emitQuad(rect: unit, uv: uv, color: white)
     #expect(b.commands.first?.state.texture == nil)
 }
+
+@Test func emitCarriesUVBoundsIntoEveryVertex() {
+    // Atlas sprites ride a uv-clip rect so the shader can clamp sampling to the
+    // sprite's sub-rect; untextured emits leave it zero (shader passthrough).
+    let b = Batcher()
+    let bounds = SIMD4<Float>(0.1, 0.2, 0.3, 0.4)
+    b.emitQuadCorners(p0: .zero, p1: .zero, p2: .zero, p3: .zero,
+                      uv: uv, color: white, scaleData: .zero, uvBounds: bounds)
+    #expect(b.vertices.count == 6)
+    #expect(b.vertices.allSatisfy { $0.uvBounds == bounds })
+}
