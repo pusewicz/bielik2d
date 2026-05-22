@@ -4,7 +4,7 @@ import Foundation
 
 let windowSize = SIMD2<Float>(1280, 720)
 let initialEntityCount = 10_000
-let maxEntityCount = 100_000
+let maxEntityCount = 200_000
 let countStep = 2_000
 let entityRadius: Float = 6
 let spriteScale: Float = 0.35
