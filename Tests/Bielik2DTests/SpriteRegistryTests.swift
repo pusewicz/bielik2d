@@ -97,6 +97,40 @@ private func solid(_ w: Int, _ h: Int) -> ImageBytes {
     #expect(s.imageID == onFrame1)
 }
 
+@Test func twoSpritesOfOneSheetShareTheAssetButPlayIndependently() throws {
+    let fake = FakeRegistrar()
+    let reg = SpriteRegistry(registrar: fake) { _ in solid(8, 4) }  // a 2-frame sheet
+    var a = try reg.sprite(sheet: "enemy.png", frameWidth: 4, frameHeight: 4, fps: 10)
+    var b = try reg.sprite(sheet: "enemy.png", frameWidth: 4, frameHeight: 4, fps: 10)
+
+    #expect(a.asset == b.asset)   // same shared asset — one atlas footprint, deduped
+    #expect(fake.count == 2)      // sliced/registered once (2 frames), not 4
+
+    b.pause()
+    a.update(0.1, in: reg)        // only a advances
+    b.update(0.1, in: reg)        // b is paused — no-op
+    #expect(a.frame == 1)
+    #expect(b.frame == 0)         // fully independent playback
+    #expect(a.imageID != b.imageID)
+}
+
+@Test func settingTheFrameJumpsToItAndCachesIt() {
+    let reg = SpriteRegistry(registrar: FakeRegistrar())
+    let id = reg.makeSheetAsset(solid(12, 4), frameWidth: 4, frameHeight: 4, fps: 10)  // 3 frames
+    var s = Sprite(asset: id, in: reg)
+    s.setFrame(2, in: reg)
+    #expect(s.frame == 2)
+    #expect(s.imageID == reg.asset(id).animations[0].frames[2].imageID)
+}
+
+@Test func settingTheFrameClampsIntoRange() {
+    let reg = SpriteRegistry(registrar: FakeRegistrar())
+    let id = reg.makeSheetAsset(solid(12, 4), frameWidth: 4, frameHeight: 4, fps: 10)  // 3 frames
+    var s = Sprite(asset: id, in: reg)
+    s.setFrame(99, in: reg)
+    #expect(s.frame == 2)   // clamped to the last frame
+}
+
 @Test func anInMemorySheetMakesAnAnimatedSprite() {
     let reg = SpriteRegistry(registrar: FakeRegistrar())
     var s = reg.makeSprite(sheet: solid(8, 4), frameWidth: 4, frameHeight: 4, fps: 10)  // 2 frames

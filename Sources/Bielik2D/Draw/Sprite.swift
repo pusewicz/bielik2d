@@ -90,6 +90,18 @@ public struct Sprite: Equatable {
 
     // MARK: - Playback
 
+    /// The current frame index within the playing animation.
+    public var frame: Int { cursor.frame }
+
+    /// Jumps to frame `index` of the current animation and holds there (until `update`
+    /// advances again), re-caching it. `index` is clamped into the animation's range.
+    mutating func setFrame(_ index: Int, in registry: SpriteRegistry) {
+        let anim = registry.asset(asset).animations[animationIndex]
+        let i = min(max(index, 0), anim.frames.count - 1)
+        cursor = AnimationCursor(frame: i, elapsed: 0, forward: cursor.forward)
+        cache(anim.frames[i])
+    }
+
     /// Advances the current animation by `dt` seconds against `registry`, re-caching
     /// the current frame. A static (single-frame) sprite returns immediately without
     /// touching the registry, so a screen full of them costs nothing.
@@ -127,6 +139,14 @@ public struct Sprite: Equatable {
             preconditionFailure("Sprite.play needs an active App/Renderer")
         }
         play(name, in: r.spriteRegistry, restart: restart)
+    }
+
+    /// Jumps to a specific frame against the active renderer. See `setFrame(_:in:)`.
+    public mutating func setFrame(_ index: Int) {
+        guard let r = Renderer.current else {
+            preconditionFailure("Sprite.setFrame needs an active App/Renderer")
+        }
+        setFrame(index, in: r.spriteRegistry)
     }
 
     public mutating func pause() { paused = true }
