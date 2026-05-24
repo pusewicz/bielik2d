@@ -7,10 +7,37 @@ let unit = Rect(x: 0, y: 0, width: 1, height: 1)
 let app = try App(title: "Bielik2D Demo", width: Int(windowSize.x), height: Int(windowSize.y))
 print("GPU driver: \(app.driverName)")
 
-// All GPU resources come from the renderer — no pipelines, buffers, or samplers
-// in user code anymore.
-let player = try app.renderer.makeSprite(png:
-    Bundle.module.url(forResource: "p1_stand", withExtension: "png", subdirectory: "assets")!.path)
+func assetPath(_ name: String, _ ext: String) -> String {
+    Bundle.module.url(forResource: name, withExtension: ext, subdirectory: "assets")!.path
+}
+
+// The ergonomic load: no renderer handle, just a path. The App installed the ambient
+// renderer, so `Sprite(path:)` finds it. Asking twice reuses the same cached asset.
+let player = try Sprite(path: assetPath("p1_stand", "png"))
+let playerAgain = try Sprite(path: assetPath("p1_stand", "png"))
+print("dedup: same asset on second load = \(player == playerAgain)")
+
+// A procedurally-built 4-frame sheet (colour cycling) shown as a looping animation —
+// no Aseprite needed, just an in-memory sheet sliced into frames.
+func colorSheet(cell: Int, colors: [[UInt8]]) -> ImageBytes {
+    let w = cell * colors.count
+    var px = [UInt8](repeating: 0, count: w * cell * 4)
+    for (c, color) in colors.enumerated() {
+        for y in 0..<cell {
+            for x in 0..<cell {
+                let o = (y * w + c * cell + x) * 4
+                px[o] = color[0]; px[o + 1] = color[1]; px[o + 2] = color[2]; px[o + 3] = 255
+            }
+        }
+    }
+    return ImageBytes(width: w, height: cell, pixels: Data(px))
+}
+var blinker = app.renderer.makeSprite(
+    sheet: colorSheet(cell: 32, colors: [[230, 70, 70], [70, 200, 90], [80, 120, 240], [240, 200, 60]]),
+    frameWidth: 32, frameHeight: 32, fps: 6)
+blinker.scale = SIMD2(3, 3)
+blinker.scaleMode = .nearest
+
 let font = try Font(path: "/System/Library/Fonts/Geneva.ttf", ptSize: 28)
 let canvas = try app.renderer.makeCanvas(width: 256, height: 256, format: .bgra8Unorm)
 let canvasSize = SIMD2<Float>(256, 256)
@@ -18,11 +45,15 @@ let canvasSize = SIMD2<Float>(256, 256)
 let draw = Draw(textEngine: try app.renderer.makeTextEngine())
 let cameraCanvas = Camera(viewportSize: canvasSize)
 let startTime = Date()
+var lastTime = startTime
 
 while app.isRunning {
     app.update()
 
-    let t = Float(Date().timeIntervalSince(startTime))
+    let now = Date()
+    let t = Float(now.timeIntervalSince(startTime))
+    let dt = now.timeIntervalSince(lastTime)
+    lastTime = now
 
     // Canvas pass: a spinning pink quad, in canvas-local coords. `with` scopes
     // the transform + tint and pops them automatically.
@@ -37,6 +68,12 @@ while app.isRunning {
     draw.circleFill(center: SIMD2(120, 150), radius: 50, color: Color(r: 0.4, g: 0.8, b: 1.0))
     draw.line(from: SIMD2(210, 110), to: SIMD2(360, 190),
               thickness: 8, color: Color(r: 1.0, g: 0.9, b: 0.3))
+
+    // The looping animation: advance playback, then draw it with the sprite's own
+    // `draw(at:)` sugar (queues into the ambient Draw).
+    blinker.update(dt)
+    blinker.draw(at: SIMD2(420, 110))
+    draw.text("animated sheet", font: font, at: SIMD2(420, 210), color: .white)
 
     // Pixel-art showcase: one sprite upscaled three ways. The scale sweeps
     // through non-integer factors, so nearest visibly shimmers, linear stays
@@ -53,7 +90,7 @@ while app.isRunning {
     let modes: [(ScaleMode, String)] = [(.nearest, "nearest"), (.linear, "linear"), (.pixelArt, "pixelArt")]
     for (i, entry) in modes.enumerated() {
         let x = startX + Float(i) * (spriteW + gap)
-        draw.sprite(demoSprite, at: SIMD2(x, baseline - spriteH), scaleMode: entry.0)
+        demoSprite.draw(at: SIMD2(x, baseline - spriteH), scaleMode: entry.0)
         draw.text(entry.1, font: font, at: SIMD2(x, baseline + 6), color: .white)
     }
 

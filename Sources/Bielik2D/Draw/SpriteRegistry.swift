@@ -44,6 +44,11 @@ final class SpriteRegistry {
         Sprite(asset: makeStaticAsset(image), in: self)
     }
 
+    /// Builds an animated sprite by slicing an in-memory sheet (no path dedup).
+    func makeSprite(sheet image: ImageBytes, frameWidth: Int, frameHeight: Int, fps: Double) -> Sprite {
+        Sprite(asset: makeSheetAsset(image, frameWidth: frameWidth, frameHeight: frameHeight, fps: fps), in: self)
+    }
+
     /// Builds a one-frame static asset straight from in-memory pixels (no path dedup).
     func makeStaticAsset(_ image: ImageBytes) -> SpriteAssetID {
         let frame = Frame(imageID: registrar.register(image),

@@ -206,6 +206,11 @@ public final class Renderer: RenderBackend {
         spriteRegistry.makeSprite(image)
     }
 
+    /// Builds an animated sprite from an in-memory sheet (e.g. procedurally generated).
+    public func makeSprite(sheet image: ImageBytes, frameWidth: Int, frameHeight: Int, fps: Double = 10) -> Sprite {
+        spriteRegistry.makeSprite(sheet: image, frameWidth: frameWidth, frameHeight: frameHeight, fps: fps)
+    }
+
     public func makeCanvas(width: Int, height: Int, format: TextureFormat = .rgba8Unorm) throws -> Canvas {
         try Canvas(width: width, height: height, format: format, on: self)
     }

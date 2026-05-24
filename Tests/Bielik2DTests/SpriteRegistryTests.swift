@@ -97,6 +97,14 @@ private func solid(_ w: Int, _ h: Int) -> ImageBytes {
     #expect(s.imageID == onFrame1)
 }
 
+@Test func anInMemorySheetMakesAnAnimatedSprite() {
+    let reg = SpriteRegistry(registrar: FakeRegistrar())
+    var s = reg.makeSprite(sheet: solid(8, 4), frameWidth: 4, frameHeight: 4, fps: 10)  // 2 frames
+    let frame0 = s.imageID
+    s.update(0.1, in: reg)
+    #expect(s.imageID != frame0)
+}
+
 @Test func sheetSlicesIntoOneLoopingAnimationOfFrames() {
     let fake = FakeRegistrar()
     let reg = SpriteRegistry(registrar: fake)

@@ -7,6 +7,13 @@ public struct ImageBytes {
     public let height: Int
     /// Tightly-packed RGBA8 pixel data (no row padding).
     public let pixels: Data
+
+    /// Wraps tightly-packed RGBA8 pixels — useful for procedurally generated images.
+    public init(width: Int, height: Int, pixels: Data) {
+        self.width = width
+        self.height = height
+        self.pixels = pixels
+    }
 }
 
 public enum SDL3AssetLoader {
