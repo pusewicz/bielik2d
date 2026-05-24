@@ -43,3 +43,18 @@ private func solid(_ w: Int, _ h: Int) -> ImageBytes {
     let b = try reg.loadAsset(path: "b.png")
     #expect(a != b)
 }
+
+@Test func sheetSlicesIntoOneLoopingAnimationOfFrames() {
+    let fake = FakeRegistrar()
+    let reg = SpriteRegistry(registrar: fake)
+    // 8×8 sheet, 4×4 cells → 4 frames (2 cols × 2 rows), row-major.
+    let id = reg.makeSheetAsset(solid(8, 8), frameWidth: 4, frameHeight: 4, fps: 10)
+    let anim = reg.asset(id).animations[0]
+    #expect(reg.asset(id).animations.count == 1)
+    #expect(anim.mode == .loop)
+    #expect(anim.frames.count == 4)
+    #expect(anim.frames[0].width == 4)
+    #expect(anim.frames[0].height == 4)
+    #expect(anim.frames[0].duration == 0.1)   // 1 / fps
+    #expect(fake.count == 4)                   // every frame registered
+}

@@ -42,6 +42,25 @@ final class SpriteRegistry {
         return id
     }
 
+    /// Slices `sheet` row-major into `frameWidth`×`frameHeight` cells, registering each
+    /// as a frame of one looping `"default"` animation running at `fps`.
+    func makeSheetAsset(_ sheet: ImageBytes, frameWidth: Int, frameHeight: Int, fps: Double) -> SpriteAssetID {
+        let cols = sheet.width / frameWidth
+        let rows = sheet.height / frameHeight
+        let duration = fps > 0 ? 1.0 / fps : 0
+        var frames: [Frame] = []
+        frames.reserveCapacity(cols * rows)
+        for row in 0..<rows {
+            for col in 0..<cols {
+                let cell = sheet.subImage(x: col * frameWidth, y: row * frameHeight,
+                                          width: frameWidth, height: frameHeight)
+                frames.append(Frame(imageID: registrar.register(cell),
+                                    width: frameWidth, height: frameHeight, duration: duration))
+            }
+        }
+        return store(SpriteAsset(name: "", animations: [Animation(name: "default", frames: frames, mode: .loop)]))
+    }
+
     private func store(_ asset: SpriteAsset) -> SpriteAssetID {
         assets.append(asset)
         return assets.count - 1

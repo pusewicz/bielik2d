@@ -24,5 +24,24 @@ extension ImageBytes {
         }
         return ImageBytes(width: outW, height: outH, pixels: out)
     }
+
+    /// Returns the `width`×`height` sub-rectangle whose top-left is at (`x`, `y`).
+    /// Used to slice a sprite sheet into its individual frames.
+    func subImage(x: Int, y: Int, width: Int, height: Int) -> ImageBytes {
+        let srcStride = self.width * 4
+        let dstStride = width * 4
+        var out = Data(count: dstStride * height)
+        out.withUnsafeMutableBytes { dstRaw in
+            let dst = dstRaw.bindMemory(to: UInt8.self).baseAddress!
+            pixels.withUnsafeBytes { srcRaw in
+                let src = srcRaw.bindMemory(to: UInt8.self).baseAddress!
+                for row in 0..<height {
+                    let srcOff = ((y + row) * self.width + x) * 4
+                    memcpy(dst + row * dstStride, src + srcOff, dstStride)
+                }
+            }
+        }
+        return ImageBytes(width: width, height: height, pixels: out)
+    }
 }
 #endif
