@@ -27,6 +27,23 @@ final class SpriteRegistry {
 
     func asset(_ id: SpriteAssetID) -> SpriteAsset { assets[id] }
 
+    // MARK: - Vending sprites
+
+    /// Loads (and path-caches) a sprite from a single image file.
+    func sprite(path: String) throws -> Sprite {
+        Sprite(asset: try loadAsset(path: path), in: self)
+    }
+
+    /// Loads (and path-caches) a sprite from a grid sprite sheet.
+    func sprite(sheet path: String, frameWidth: Int, frameHeight: Int, fps: Double) throws -> Sprite {
+        Sprite(asset: try loadSheet(path: path, frameWidth: frameWidth, frameHeight: frameHeight, fps: fps), in: self)
+    }
+
+    /// Builds a one-frame sprite from in-memory pixels (no path dedup).
+    func makeSprite(_ image: ImageBytes) -> Sprite {
+        Sprite(asset: makeStaticAsset(image), in: self)
+    }
+
     /// Builds a one-frame static asset straight from in-memory pixels (no path dedup).
     func makeStaticAsset(_ image: ImageBytes) -> SpriteAssetID {
         let frame = Frame(imageID: registrar.register(image),
@@ -39,6 +56,15 @@ final class SpriteRegistry {
         if let id = byPath[path] { return id }
         let id = makeStaticAsset(try load(path))
         byPath[path] = id
+        return id
+    }
+
+    /// Loads `path` as a sliced sheet asset, deduped by path and slice geometry.
+    func loadSheet(path: String, frameWidth: Int, frameHeight: Int, fps: Double) throws -> SpriteAssetID {
+        let key = "\(path)#\(frameWidth)x\(frameHeight)@\(fps)"
+        if let id = byPath[key] { return id }
+        let id = makeSheetAsset(try load(path), frameWidth: frameWidth, frameHeight: frameHeight, fps: fps)
+        byPath[key] = id
         return id
     }
 

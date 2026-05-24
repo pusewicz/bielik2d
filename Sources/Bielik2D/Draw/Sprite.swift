@@ -12,14 +12,26 @@ public enum SpriteError: Error, CustomStringConvertible {
     }
 }
 
-/// A textured rectangle. The image's pixels live in the renderer's `SpriteBatch`
-/// and are packed into a shared atlas on first draw — the GPU texture stays hidden,
-/// CF-style. A `Sprite` is a lightweight handle plus per-instance draw state
-/// (pivot/scale/opacity/scaleMode); copy it freely and tweak those before drawing.
+/// A drawable sprite: a reference to a shared asset (one or more named animations,
+/// owned by the renderer's `SpriteRegistry`) plus this instance's own playback cursor
+/// and draw state. The value is a small POD — an asset id, the current frame's cached
+/// id/size, where playback sits, and pivot/scale/opacity/scaleMode — so copy it freely
+/// and tweak the draw state before drawing. A plain PNG is a one-frame animation, so
+/// `update` simply does nothing for it.
 public struct Sprite: Equatable {
-    let id: SpriteID
-    public let width: Int
-    public let height: Int
+    let asset: SpriteAssetID
+    var animationIndex: Int
+    var cursor: AnimationCursor
+    var frameCount: Int            // of the current animation; > 1 means it animates
+
+    /// Whether `update` advances playback.
+    public var paused: Bool
+
+    // The current frame, cached so drawing never has to touch the registry.
+    var imageID: SpriteID
+    public private(set) var width: Int
+    public private(set) var height: Int
+
     public var pivot: SIMD2<Float>
     public var scale: SIMD2<Float>
     public var opacity: Float
@@ -28,23 +40,68 @@ public struct Sprite: Equatable {
     /// ambient mode set via `Draw.pushScaleMode`.
     public var scaleMode: ScaleMode?
 
-    public init(png path: String, on renderer: Renderer) throws {
-        let image = try SDL3AssetLoader.loadImage(path: path)
-        self.init(image: image, on: renderer)
-    }
-
-    public init(image: ImageBytes, on renderer: Renderer) {
-        self.id = renderer.register(image)
-        self.width = image.width
-        self.height = image.height
+    /// Builds a sprite sitting at the start of its default animation. The registry is
+    /// read once here to cache the first frame; the value keeps no reference to it.
+    init(asset: SpriteAssetID, in registry: SpriteRegistry) {
+        self.asset = asset
+        self.animationIndex = 0
+        self.cursor = AnimationCursor()
+        self.paused = false
         self.pivot = .zero
         self.scale = SIMD2(1, 1)
         self.opacity = 1
         self.scaleMode = nil
+
+        let anim = registry.asset(asset).animations[0]
+        self.frameCount = anim.frames.count
+        let frame = anim.frames[0]
+        self.imageID = frame.imageID
+        self.width = frame.width
+        self.height = frame.height
     }
 
-    public static func == (lhs: Sprite, rhs: Sprite) -> Bool {
-        lhs.id == rhs.id
+    /// Loads (and path-caches) a sprite on a specific renderer.
+    public init(path: String, on renderer: Renderer) throws {
+        self = try renderer.sprite(path: path)
+    }
+
+    /// Registers in-memory pixels as a one-frame sprite on a specific renderer.
+    public init(image: ImageBytes, on renderer: Renderer) {
+        self = renderer.makeSprite(image: image)
+    }
+
+    // MARK: - Playback
+
+    /// Advances the current animation by `dt` seconds against `registry`, re-caching
+    /// the current frame. A static (single-frame) sprite returns immediately without
+    /// touching the registry, so a screen full of them costs nothing.
+    mutating func update(_ dt: Double, in registry: SpriteRegistry) {
+        guard !paused, frameCount > 1 else { return }
+        let anim = registry.asset(asset).animations[animationIndex]
+        cursor = anim.advanced(cursor, by: dt)
+        cache(anim.frames[cursor.frame])
+    }
+
+    /// Switches to the animation named `name` (a no-op if there's no such animation),
+    /// restarting from the first frame unless `restart` is false.
+    mutating func play(_ name: String, in registry: SpriteRegistry, restart: Bool = true) {
+        let asset = registry.asset(self.asset)
+        guard let idx = asset.animationIndex(name) else { return }
+        guard idx != animationIndex || restart else { return }
+        animationIndex = idx
+        cursor = AnimationCursor()
+        let anim = asset.animations[idx]
+        frameCount = anim.frames.count
+        cache(anim.frames[0])
+    }
+
+    public mutating func pause() { paused = true }
+    public mutating func resume() { paused = false }
+
+    private mutating func cache(_ frame: Frame) {
+        imageID = frame.imageID
+        width = frame.width
+        height = frame.height
     }
 }
 
@@ -62,7 +119,7 @@ extension Draw {
         let tint = currentColor
         let mode = scaleMode ?? s.scaleMode ?? currentScaleMode
         spriteInstances.append(SpriteInstance(
-            id: s.id,
+            id: s.imageID,
             p0: t.transform(SIMD2(rect.minX, rect.minY)),
             p1: t.transform(SIMD2(rect.maxX, rect.minY)),
             p2: t.transform(SIMD2(rect.maxX, rect.maxY)),

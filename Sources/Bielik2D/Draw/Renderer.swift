@@ -17,6 +17,7 @@ public final class Renderer: RenderBackend {
     private let sampler: Sampler
     private let whiteTexture: Texture
     private let spriteBatch: SpriteBatch
+    let spriteRegistry: SpriteRegistry
     private var vbuf: Buffer
     private var xfer: TransferBuffer
     private var capacityBytes: Int
@@ -28,7 +29,9 @@ public final class Renderer: RenderBackend {
     init(device: GPUDevice, window: OpaquePointer) throws {
         self.device = device
         self.window = window
-        self.spriteBatch = SpriteBatch(device: device)
+        let batch = SpriteBatch(device: device)
+        self.spriteBatch = batch
+        self.spriteRegistry = SpriteRegistry(registrar: batch)
         let vs = try Shader.builtin(name: "sprite.vert", stage: .vertex, on: device)
         let fs = try Shader.builtin(name: "sprite.frag", stage: .fragment, on: device)
         self.vertexShader = vs
@@ -178,18 +181,23 @@ public final class Renderer: RenderBackend {
 
     // MARK: - Resource factories (so callers never see a GPUDevice)
 
+    /// Loads (and path-caches) a sprite from an image file.
+    public func sprite(path: String) throws -> Sprite {
+        try spriteRegistry.sprite(path: path)
+    }
+
+    /// Loads (and path-caches) an animated sprite by slicing a grid sprite sheet into
+    /// `frameWidth`×`frameHeight` cells played as one looping animation at `fps`.
+    public func sprite(sheet path: String, frameWidth: Int, frameHeight: Int, fps: Double = 10) throws -> Sprite {
+        try spriteRegistry.sprite(sheet: path, frameWidth: frameWidth, frameHeight: frameHeight, fps: fps)
+    }
+
     public func makeSprite(png path: String) throws -> Sprite {
-        try Sprite(png: path, on: self)
+        try spriteRegistry.sprite(path: path)
     }
 
     public func makeSprite(image: ImageBytes) -> Sprite {
-        Sprite(image: image, on: self)
-    }
-
-    /// Stores an image's pixels in the atlas and returns its handle. Used by
-    /// `Sprite.init` so a `Sprite` never holds a GPU texture of its own.
-    func register(_ image: ImageBytes) -> SpriteID {
-        spriteBatch.register(image)
+        spriteRegistry.makeSprite(image)
     }
 
     public func makeCanvas(width: Int, height: Int, format: TextureFormat = .rgba8Unorm) throws -> Canvas {

@@ -44,6 +44,59 @@ private func solid(_ w: Int, _ h: Int) -> ImageBytes {
     #expect(a != b)
 }
 
+@Test func aSpriteCachesItsCurrentFrameSize() {
+    let reg = SpriteRegistry(registrar: FakeRegistrar())
+    let s = Sprite(asset: reg.makeStaticAsset(solid(5, 7)), in: reg)
+    #expect(s.width == 5)
+    #expect(s.height == 7)
+}
+
+@Test func updatingAnAnimatedSpriteAdvancesItsCachedFrame() {
+    let reg = SpriteRegistry(registrar: FakeRegistrar())
+    let id = reg.makeSheetAsset(solid(8, 4), frameWidth: 4, frameHeight: 4, fps: 10)  // 2 frames @0.1s
+    var s = Sprite(asset: id, in: reg)
+    let frame0 = s.imageID
+    s.update(0.1, in: reg)
+    #expect(s.imageID != frame0)   // now showing frame 1's image
+}
+
+@Test func updatingAStaticSpriteIsANoOp() {
+    let reg = SpriteRegistry(registrar: FakeRegistrar())
+    var s = Sprite(asset: reg.makeStaticAsset(solid(4, 4)), in: reg)
+    let before = s.imageID
+    s.update(100, in: reg)
+    #expect(s.imageID == before)
+}
+
+@Test func aPausedSpriteDoesNotAdvance() {
+    let reg = SpriteRegistry(registrar: FakeRegistrar())
+    let id = reg.makeSheetAsset(solid(8, 4), frameWidth: 4, frameHeight: 4, fps: 10)
+    var s = Sprite(asset: id, in: reg)
+    let before = s.imageID
+    s.pause()
+    s.update(1.0, in: reg)
+    #expect(s.imageID == before)
+}
+
+@Test func playRestartsTheNamedAnimation() {
+    let reg = SpriteRegistry(registrar: FakeRegistrar())
+    let id = reg.makeSheetAsset(solid(8, 4), frameWidth: 4, frameHeight: 4, fps: 10)
+    var s = Sprite(asset: id, in: reg)
+    s.update(0.1, in: reg)        // advance off frame 0
+    s.play("default", in: reg)    // restart
+    #expect(s.imageID == reg.asset(id).animations[0].frames[0].imageID)
+}
+
+@Test func playingAnUnknownAnimationIsIgnored() {
+    let reg = SpriteRegistry(registrar: FakeRegistrar())
+    let id = reg.makeSheetAsset(solid(8, 4), frameWidth: 4, frameHeight: 4, fps: 10)
+    var s = Sprite(asset: id, in: reg)
+    s.update(0.1, in: reg)
+    let onFrame1 = s.imageID
+    s.play("walk", in: reg)       // no such animation
+    #expect(s.imageID == onFrame1)
+}
+
 @Test func sheetSlicesIntoOneLoopingAnimationOfFrames() {
     let fake = FakeRegistrar()
     let reg = SpriteRegistry(registrar: fake)
