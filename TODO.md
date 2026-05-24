@@ -140,6 +140,27 @@ live in RAM so images are packed lazily on first use. Deferred (push → defrag 
 - [x] `uvBounds` clamp + local-space pixel-art/nearest snapping in the sprite shaders (HLSL + WGSL).
 - [x] `Renderer.lastDrawCallCount` diagnostic; benchmark HUD shows the collapse.
 
+## Phase 15 — Sprite registry & animation API ✅
+
+CF-style ergonomic loading: `Sprite(path:)` (and `Sprite(sheet:...)`) load through a shared,
+deduplicating `SpriteRegistry` reached via an ambient `Renderer.current` that `App` installs —
+explicit `on:`/`in:` forms remain for tests and multi-context. A `Sprite` is a small POD: a
+`SpriteAssetID` plus its current frame's cached id/size, playback cursor, and draw state. A sprite is
+fundamentally animated (a PNG is a one-frame animation), so the existing atlas pipeline is untouched —
+the new layer sits above it and feeds `SpriteInstance` the cached frame id. PNG-decode only; `.ase`
+slots in later behind the same registry.
+
+- [x] Animation model (`PlayMode`, `Frame`, `Animation`, `SpriteAsset`) + pure frame-stepping
+      (`Animation.advanced`: loop / once / pingPong, single-frame & zero-duration hold).
+- [x] `SpriteRegistry` — path→asset dedup over an injectable `ImageRegistrar` (GPU-free to test);
+      `SpriteBatch` conforms.
+- [x] `ImageBytes.subImage` + grid sprite-sheet slicing (`sprite(sheet:frameWidth:frameHeight:fps:)`),
+      from a file or in-memory pixels.
+- [x] `Sprite` rewired to the asset model; `update`/`play`/`pause`/`resume` (static sprites skip the
+      registry entirely, so 200k of them cost nothing); `Draw.sprite` reads the cached frame id.
+- [x] Ambient `Renderer.current` (App-installed) + `Draw.current`; `Sprite.draw(at:)` sugar.
+- [x] Demo showcases `Sprite(path:)` dedup, `sprite.draw(at:)`, and a looping generated sheet.
+
 ## Known gaps / next
 
 - Remaining CF draw-state stacks: `pushScissor`, `pushViewport`, `pushShapeAA`, `pushBlendState`.
@@ -149,5 +170,7 @@ live in RAM so images are packed lazily on first use. Deferred (push → defrag 
 - `.swift-format` config + README screenshots (Phase 12 tail).
 - Auto-atlaser follow-ups (Phase 14): LRU decay/eviction (`tick()` + space reclaim / page compaction);
   unified ordered draw buffer so sprites interleave with shapes/text within a layer by call order;
-  put the white pixel in the atlas so SDF shapes batch with sprites; sprite animation frames
-  (`play(...)`); web-backend atlas parity.
+  put the white pixel in the atlas so SDF shapes batch with sprites; web-backend atlas parity.
+- Aseprite (`.ase`) loading: parse frames/tags/durations into the `SpriteRegistry`'s asset model
+  (the registry, animation playback, and named-animation lookup already exist — this is just a
+  decoder feeding multiple animations instead of one `"default"`).
