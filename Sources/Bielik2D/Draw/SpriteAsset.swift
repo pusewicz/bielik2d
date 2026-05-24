@@ -66,3 +66,16 @@ struct Animation: Equatable, Sendable {
         return c
     }
 }
+
+/// A loaded sprite's shared data: its named animations. The `SpriteRegistry` owns
+/// these; a `Sprite` refers to one by `SpriteAssetID` and carries its own playback
+/// cursor. A plain PNG becomes a one-animation, one-frame asset.
+struct SpriteAsset: Equatable, Sendable {
+    let name: String
+    let animations: [Animation]
+
+    /// Index of the animation called `name`, or nil — used by `Sprite.play`.
+    func animationIndex(_ name: String) -> Int? {
+        animations.firstIndex { $0.name == name }
+    }
+}
