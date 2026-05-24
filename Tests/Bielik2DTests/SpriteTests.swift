@@ -94,6 +94,16 @@ struct SpriteTests {
         #expect(s.imageID != frame0)
     }
 
+    @Test func spriteDrawQueuesIntoTheAmbientDraw() throws {
+        let app = try App(title: "spr-self-draw", width: 64, height: 64)
+        defer { app.destroy() }
+        let d = Draw()   // most-recently-created Draw becomes the ambient one
+        let s = try Sprite(path: fixturePath("4x4.png"))
+        s.draw(at: SIMD2<Float>(5, 6))   // sugar over d.sprite(s, at:)
+        #expect(d.spriteInstances.count == 1)
+        #expect(d.spriteInstances.first?.p0 == SIMD2<Float>(5, 6))
+    }
+
     @Test func ambientUsedWhenSpriteModeNil() throws {
         let app = try App(title: "spr-amb", width: 64, height: 64)
         defer { app.destroy() }

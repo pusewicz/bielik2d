@@ -15,15 +15,22 @@ public final class Draw {
     private var layers = StateStack(initial: 0)
     private var scaleModes = StateStack(initial: ScaleMode.default)
 
+    /// The Draw that `sprite.draw(at:)` queues into — set to the most recently created
+    /// Draw. `nonisolated(unsafe)` for the same single-threaded reason as
+    /// `Renderer.current`; pass an explicit `Draw` via `draw.sprite(_:at:)` otherwise.
+    public static nonisolated(unsafe) var current: Draw?
+
     public init(textEngine: Any? = nil) {
         self.batcher = Batcher()
         self.textEngine = textEngine
+        Draw.current = self
     }
 
     /// Internal seam for tests that inspect the queued geometry directly.
     init(batcher: Batcher, textEngine: Any? = nil) {
         self.batcher = batcher
         self.textEngine = textEngine
+        Draw.current = self
     }
 
     /// Reserve vertex storage up front so per-frame queueing never reallocates.

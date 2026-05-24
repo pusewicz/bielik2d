@@ -132,6 +132,15 @@ public struct Sprite: Equatable {
     public mutating func pause() { paused = true }
     public mutating func resume() { paused = false }
 
+    /// Queues this sprite into the ambient `Draw` (the most recently created one) —
+    /// sugar for `draw.sprite(self, at:)`. Use that explicit form with multiple Draws.
+    public func draw(at: SIMD2<Float> = .zero, scaleMode: ScaleMode? = nil) {
+        guard let d = Draw.current else {
+            preconditionFailure("Sprite.draw needs an active Draw; use draw.sprite(_:at:)")
+        }
+        d.sprite(self, at: at, scaleMode: scaleMode)
+    }
+
     private mutating func cache(_ frame: Frame) {
         imageID = frame.imageID
         width = frame.width
