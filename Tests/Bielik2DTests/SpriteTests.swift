@@ -76,6 +76,24 @@ struct SpriteTests {
         #expect(d.spriteInstances.first?.scaleData == SIMD4<Float>(4, 4, 2, 0))
     }
 
+    @Test func globalPathInitUsesTheActiveRenderer() throws {
+        let app = try App(title: "spr-global", width: 64, height: 64)
+        defer { app.destroy() }
+        // No `on:` argument — resolves through the ambient Renderer.current.
+        let s = try Sprite(path: fixturePath("4x4.png"))
+        #expect(s.width == 4)
+        #expect(s.height == 4)
+    }
+
+    @Test func globalSheetAnimatesViaTheActiveRendererAndUpdate() throws {
+        let app = try App(title: "spr-global-anim", width: 64, height: 64)
+        defer { app.destroy() }
+        var s = try Sprite(sheet: fixturePath("4x4.png"), frameWidth: 2, frameHeight: 2, fps: 10)
+        let frame0 = s.imageID
+        s.update(0.1)   // ambient renderer, no registry argument
+        #expect(s.imageID != frame0)
+    }
+
     @Test func ambientUsedWhenSpriteModeNil() throws {
         let app = try App(title: "spr-amb", width: 64, height: 64)
         defer { app.destroy() }

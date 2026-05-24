@@ -22,6 +22,12 @@ public final class Renderer: RenderBackend {
     private var xfer: TransferBuffer
     private var capacityBytes: Int
 
+    /// The renderer that bare `Sprite(path:)` / `sprite.update(_:)` calls resolve
+    /// against — installed by `App` at startup. `nonisolated(unsafe)` because the
+    /// engine, like CF, drives everything from one thread; the explicit `on:`/`in:`
+    /// forms exist for tests and multi-context setups that can't lean on this.
+    public static nonisolated(unsafe) var current: Renderer?
+
     /// Draw calls issued by the last flush — handy for confirming the atlas is
     /// collapsing many sprites into few binds.
     public private(set) var lastDrawCallCount: Int = 0

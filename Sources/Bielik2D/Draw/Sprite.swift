@@ -60,6 +60,17 @@ public struct Sprite: Equatable {
         self.height = frame.height
     }
 
+    /// Loads (and path-caches) a sprite through the active renderer (`App` installs it).
+    public init(path: String) throws {
+        self = try Sprite.activeRenderer().sprite(path: path)
+    }
+
+    /// Loads (and path-caches) an animated sprite by slicing a grid sprite sheet into
+    /// `frameWidth`×`frameHeight` cells, played as one looping animation at `fps`.
+    public init(sheet path: String, frameWidth: Int, frameHeight: Int, fps: Double = 10) throws {
+        self = try Sprite.activeRenderer().sprite(sheet: path, frameWidth: frameWidth, frameHeight: frameHeight, fps: fps)
+    }
+
     /// Loads (and path-caches) a sprite on a specific renderer.
     public init(path: String, on renderer: Renderer) throws {
         self = try renderer.sprite(path: path)
@@ -68,6 +79,13 @@ public struct Sprite: Equatable {
     /// Registers in-memory pixels as a one-frame sprite on a specific renderer.
     public init(image: ImageBytes, on renderer: Renderer) {
         self = renderer.makeSprite(image: image)
+    }
+
+    private static func activeRenderer() throws -> Renderer {
+        guard let r = Renderer.current else {
+            throw SpriteError.loadFailed("no active renderer — create an App first, or use the on:/in: forms")
+        }
+        return r
     }
 
     // MARK: - Playback
@@ -93,6 +111,22 @@ public struct Sprite: Equatable {
         let anim = asset.animations[idx]
         frameCount = anim.frames.count
         cache(anim.frames[0])
+    }
+
+    /// Advances playback against the active renderer. See `update(_:in:)`.
+    public mutating func update(_ dt: Double) {
+        guard let r = Renderer.current else {
+            preconditionFailure("Sprite.update needs an active App/Renderer")
+        }
+        update(dt, in: r.spriteRegistry)
+    }
+
+    /// Switches animation against the active renderer. See `play(_:in:restart:)`.
+    public mutating func play(_ name: String, restart: Bool = true) {
+        guard let r = Renderer.current else {
+            preconditionFailure("Sprite.play needs an active App/Renderer")
+        }
+        play(name, in: r.spriteRegistry, restart: restart)
     }
 
     public mutating func pause() { paused = true }
