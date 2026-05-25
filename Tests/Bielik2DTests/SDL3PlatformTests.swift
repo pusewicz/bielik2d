@@ -70,4 +70,35 @@ struct SDL3PlatformTests {
             #expect(Key(scancode: key.scancode) == key)
         }
     }
+
+    @Test func mouseEventsReachInput() throws {
+        let platform = try SDL3Platform.start(title: "platform mouse", width: 64, height: 64)
+        defer { platform.stop() }
+
+        var motion = SDL_Event()
+        motion.type = SDL_EVENT_MOUSE_MOTION.rawValue
+        motion.motion.x = 12
+        motion.motion.y = 34
+        motion.motion.xrel = 5
+        motion.motion.yrel = 6
+        _ = SDL_PushEvent(&motion)
+
+        var wheel = SDL_Event()
+        wheel.type = SDL_EVENT_MOUSE_WHEEL.rawValue
+        wheel.wheel.x = 0
+        wheel.wheel.y = 2
+        _ = SDL_PushEvent(&wheel)
+
+        var button = SDL_Event()
+        button.type = SDL_EVENT_MOUSE_BUTTON_DOWN.rawValue
+        button.button.button = UInt8(SDL_BUTTON_LEFT)
+        button.button.down = true
+        _ = SDL_PushEvent(&button)
+
+        platform.pollEvents()
+        #expect(platform.input.mouse.position == SIMD2<Float>(12, 34))
+        #expect(platform.input.mouse.delta == SIMD2<Float>(5, 6))
+        #expect(platform.input.mouse.wheel == SIMD2<Float>(0, 2))
+        #expect(platform.input.mouse.pressed(.left))
+    }
 }

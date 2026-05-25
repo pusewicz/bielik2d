@@ -41,9 +41,34 @@ public final class SDL3Platform {
                 if let key = Key(scancode: ev.key.scancode) {
                     input.keyboard.release(key)
                 }
+            case SDL_EVENT_MOUSE_MOTION:
+                input.mouse.moved(
+                    to: SIMD2(ev.motion.x, ev.motion.y),
+                    relative: SIMD2(ev.motion.xrel, ev.motion.yrel))
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                if let button = Self.mouseButton(ev.button.button) {
+                    input.mouse.press(button)
+                }
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                if let button = Self.mouseButton(ev.button.button) {
+                    input.mouse.release(button)
+                }
+            case SDL_EVENT_MOUSE_WHEEL:
+                input.mouse.scrolled(SIMD2(ev.wheel.x, ev.wheel.y))
             default:
                 break
             }
+        }
+    }
+
+    private static func mouseButton(_ raw: UInt8) -> MouseButton? {
+        switch Int32(raw) {
+        case SDL_BUTTON_LEFT: .left
+        case SDL_BUTTON_MIDDLE: .middle
+        case SDL_BUTTON_RIGHT: .right
+        case SDL_BUTTON_X1: .x1
+        case SDL_BUTTON_X2: .x2
+        default: nil
         }
     }
 

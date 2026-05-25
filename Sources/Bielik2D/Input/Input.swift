@@ -3,9 +3,11 @@
 /// as events arrive; game code only queries the devices.
 public final class Input {
     public let keyboard = Keyboard()
+    public let mouse = Mouse()
 
     /// Advance every device to a new frame (snapshot "previous", reset deltas).
     func beginFrame() {
         keyboard.beginFrame()
+        mouse.beginFrame()
     }
 }
