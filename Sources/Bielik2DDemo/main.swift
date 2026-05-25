@@ -44,8 +44,13 @@ let canvasSize = SIMD2<Float>(256, 256)
 
 let draw = Draw(textEngine: try app.renderer.makeTextEngine())
 let cameraCanvas = Camera(viewportSize: canvasSize)
+let camera = Camera(viewportSize: windowSize)
 let startTime = Date()
 var lastTime = startTime
+
+// Input showcase: a sprite the player drives, plus a cursor dot.
+var playerPos = windowSize / 2
+let moveSpeed: Float = 320
 
 while app.isRunning {
     app.update()
@@ -54,6 +59,18 @@ while app.isRunning {
     let t = Float(now.timeIntervalSince(startTime))
     let dt = now.timeIntervalSince(lastTime)
     lastTime = now
+
+    // Move the player with WASD/arrows (digital) or the left stick (analog). +Y
+    // is down, so "up" is -Y. Held state drives continuous movement.
+    let keyboard = app.input.keyboard
+    let gamepad = app.input.gamepad(0)
+    var move = SIMD2<Float>(0, 0)
+    if keyboard.down(.a) || keyboard.down(.left) { move.x -= 1 }
+    if keyboard.down(.d) || keyboard.down(.right) { move.x += 1 }
+    if keyboard.down(.w) || keyboard.down(.up) { move.y -= 1 }
+    if keyboard.down(.s) || keyboard.down(.down) { move.y += 1 }
+    move += gamepad.leftStick
+    playerPos += move * moveSpeed * Float(dt)
 
     // Canvas pass: a spinning pink quad, in canvas-local coords. `with` scopes
     // the transform + tint and pops them automatically.
@@ -94,11 +111,24 @@ while app.isRunning {
         draw.text(entry.1, font: font, at: SIMD2(x, baseline + 6), color: .white)
     }
 
+    // The player-driven sprite and a hint.
+    var controlled = player
+    controlled.scale = SIMD2(2, 2)
+    controlled.scaleMode = .nearest
+    controlled.draw(at: playerPos)
+    draw.text("WASD / arrows / left-stick to move", font: font, at: SIMD2(40, 80), color: .white)
+
+    // Mouse aim: a dot at the cursor in world space (via screenToWorld), larger
+    // while the left button is held.
+    let aim = camera.screenToWorld(app.input.mouse.position)
+    let aiming = app.input.mouse.down(.left)
+    draw.circleFill(center: aim, radius: aiming ? 18 : 10, color: Color(r: 1.0, g: 0.5, b: 0.2))
+
     // Composite the offscreen canvas top-right, upscaled with pixel-art sampling.
     draw.with(scaleMode: .pixelArt) {
         draw.canvas(canvas, at: SIMD2(windowSize.x - canvasSize.x - 40, 40))
     }
 
-    app.drawOntoScreen(draw, clear: Color(r: 0.10, g: 0.12, b: 0.18))
+    app.drawOntoScreen(draw, clear: Color(r: 0.10, g: 0.12, b: 0.18), camera: camera)
 }
 app.destroy()

@@ -176,18 +176,21 @@ Swift's stdlib + Foundation cover them. Sequencing: 16 → 20, interleaving 19 i
 capsule/poly shapes). Each phase is independently shippable and demo-able. Big features go on a
 worktree, TDD red-green.
 
-## Phase 16 — Input: keyboard (full) + mouse + gamepad ⏳
+## Phase 16 — Input: keyboard (full) + mouse + gamepad 🟡
 
-The #1 blocker: today the surface is `App.keyJustPressed(scancode)` only — no held/released, no
-mouse, no gamepad, so most games are unplayable. CF parity: `key_down`/`just_pressed`/
-`just_released` + modifiers; mouse position/buttons/wheel/double-click; joypad buttons + analog
-sticks + triggers; an action-binding layer ("jump" → key OR button); haptic/rumble.
+The #1 blocker: the old surface was `App.keyJustPressed(scancode)` only — no held/released, no
+mouse, no gamepad. Now reached via `app.input` (keyboard/mouse/gamepad). CF parity: `down`/
+`pressed`/`released` + modifiers; mouse position/buttons/wheel; joypad buttons + analog sticks +
+triggers. The action-binding layer and haptic/rumble are the deferred follow-up.
 
-- [ ] `Sources/Bielik2D/Input/` — `Keyboard`, `Mouse`, `Gamepad`, `InputBinding`/`Action`.
-- [ ] Accumulate per-frame state from the SDL event pump in `Backend/SDL3Platform.swift`;
-      `App.update()` tracks begin/end-frame edges (held vs just-pressed vs just-released).
-- [ ] Mouse position resolves through the active `Camera` (screen→world).
-- [ ] Tests feed synthetic event sequences (edge detection + binding resolution are pure).
+- [x] `Sources/Bielik2D/Input/` — pure-Swift `Key`/`KeyModifiers` + `Keyboard`, `MouseButton` +
+      `Mouse`, `GamepadButton`/`GamepadAxis` + `Gamepad` (hot-plug, raw analog axes), aggregated
+      by `Input` and exposed as `app.input`. SDL↔enum mappings live in `*+SDL.swift`.
+- [x] Per-frame state from the SDL event pump in `Backend/SDL3Platform.swift`; `pollEvents()`
+      does begin-frame edge tracking (held / pressed / released) from a current/previous diff.
+- [x] Mouse position resolves through the active `Camera` (`Camera.screenToWorld`, via `Mat3x2.inverse`).
+- [x] Pure device tests feed synthetic transitions; SDL-bound tests push events through the pump.
+- [ ] `InputBinding`/`Action` map ("jump" → key OR button) + haptic/rumble — follow-up worktree.
 
 ## Phase 17 — Audio: sound effects + music ⏳
 
