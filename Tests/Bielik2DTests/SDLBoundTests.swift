@@ -32,6 +32,11 @@ struct SDLBoundTests {
         #expect(v >= 3_000_000)
     }
 
+    @Test func sdl3MixerHasVersion() {
+        let v = MIX_Version()
+        #expect(v >= 3_000_000)
+    }
+
     @Test func appLifecycleRoundtrips() throws {
         let app = try App(title: "test", width: 320, height: 200)
         #expect(app.isRunning)

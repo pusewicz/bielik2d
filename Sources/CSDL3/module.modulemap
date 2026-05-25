@@ -3,5 +3,6 @@ module CSDL3 [system] {
     link "SDL3"
     link "SDL3_image"
     link "SDL3_ttf"
+    link "SDL3_mixer"
     export *
 }
