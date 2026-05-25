@@ -9,6 +9,7 @@ public final class SDL3Platform {
     public private(set) var size: SIMD2<Int>
     public private(set) var shouldQuit: Bool = false
     public let input = Input()
+    private var gamepadHandles: [Int: OpaquePointer] = [:]
 
     private init(window: OpaquePointer, size: SIMD2<Int>) {
         self.windowHandle = window
@@ -16,7 +17,7 @@ public final class SDL3Platform {
     }
 
     public static func start(title: String, width: Int, height: Int) throws -> SDL3Platform {
-        guard SDL_Init(SDL_INIT_VIDEO) else {
+        guard SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) else {
             throw AppError.sdlInit(lastSDLError())
         }
         guard let win = SDL_CreateWindow(title, Int32(width), Int32(height), SDL_WINDOW_HIGH_PIXEL_DENSITY) else {
@@ -55,6 +56,33 @@ public final class SDL3Platform {
                 }
             case SDL_EVENT_MOUSE_WHEEL:
                 input.mouse.scrolled(SIMD2(ev.wheel.x, ev.wheel.y))
+            case SDL_EVENT_GAMEPAD_ADDED:
+                let id = Int(ev.gdevice.which)
+                if let handle = SDL_OpenGamepad(ev.gdevice.which) {
+                    gamepadHandles[id] = handle
+                    input.connectGamepad(id: id)
+                }
+            case SDL_EVENT_GAMEPAD_REMOVED:
+                let id = Int(ev.gdevice.which)
+                if let handle = gamepadHandles.removeValue(forKey: id) {
+                    SDL_CloseGamepad(handle)
+                }
+                input.disconnectGamepad(id: id)
+            case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+                if let button = GamepadButton(sdlRaw: Int32(ev.gbutton.button)) {
+                    input.gamepad(byID: Int(ev.gbutton.which))?.press(button)
+                }
+            case SDL_EVENT_GAMEPAD_BUTTON_UP:
+                if let button = GamepadButton(sdlRaw: Int32(ev.gbutton.button)) {
+                    input.gamepad(byID: Int(ev.gbutton.which))?.release(button)
+                }
+            case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+                if let axis = GamepadAxis(sdlRaw: Int32(ev.gaxis.axis)) {
+                    let value = axis.isTrigger
+                        ? Gamepad.normalizedTrigger(ev.gaxis.value)
+                        : Gamepad.normalizedAxis(ev.gaxis.value)
+                    input.gamepad(byID: Int(ev.gaxis.which))?.setAxis(axis, value)
+                }
             default:
                 break
             }
@@ -73,6 +101,8 @@ public final class SDL3Platform {
     }
 
     public func stop() {
+        for handle in gamepadHandles.values { SDL_CloseGamepad(handle) }
+        gamepadHandles.removeAll()
         if let win = windowHandle {
             SDL_DestroyWindow(win)
             windowHandle = nil
