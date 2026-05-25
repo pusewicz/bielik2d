@@ -44,6 +44,36 @@ struct AudioTests {
         #expect(!voice.isPlaying)
         #expect(audio.activeCount == 0)
     }
+
+    @Test func panHardLeftSilencesTheRightChannel() throws {
+        let audio = try Audio.memory()
+        let sound = try audio.makeSound(bytes: toneWav())
+        _ = audio.play(sound, pan: -1)  // hard left
+        let s = audio.render(frameCount: 1024)
+        var left: Float = 0, right: Float = 0
+        for i in stride(from: 0, to: s.count, by: 2) {  // interleaved: even=L, odd=R
+            left += abs(s[i])
+            right += abs(s[i + 1])
+        }
+        #expect(left > 0)
+        #expect(right < left * 0.001)
+    }
+
+    @Test func higherPitchFinishesSooner() throws {
+        func framesUntilDone(pitch: Float) throws -> Int {
+            let audio = try Audio.memory()
+            let sound = try audio.makeSound(bytes: toneWav(seconds: 0.1))
+            let voice = audio.play(sound, pitch: pitch)
+            var frames = 0
+            while voice.isPlaying && frames < 48_000 {
+                _ = audio.render(frameCount: 256)
+                audio.update()
+                frames += 256
+            }
+            return frames
+        }
+        #expect(try framesUntilDone(pitch: 2) < framesUntilDone(pitch: 1))
+    }
 }
 
 // MARK: - In-memory WAV fixture (no committed binary)
