@@ -20,11 +20,14 @@ Bielik2D is a 2D engine inspired by Cute Framework, written in pure Swift 6.3 on
 
 ## Out of v0 scope
 
-Audio, networking, deep input, coroutines, aseprite, text markup effects.
+Audio, networking, deep input, coroutines, aseprite, text markup effects. Most of these
+return as the prioritized post-v0 roadmap below (Phases 16–21), ranked by what unblocks
+shipping real games soonest; only networking stays deferred.
 
 ## Status (current)
 
-Phases 0–11 are substantially complete: the engine builds, `Bielik2DDemo` and `Bielik2DBenchmark` run on macOS/Metal, and `swift test` is green. The renderer was reworked into the CF-style hidden-flush API (Phase 13), then gained the runtime auto-atlaser (Phase 14) — sprites are packed into shared atlas pages so draw calls collapse to ~one per page. Remaining work is in "Known gaps / next".
+Phases 0–11 are substantially complete: the engine builds, `Bielik2DDemo` and `Bielik2DBenchmark` run on macOS/Metal, and `swift test` is green. The renderer was reworked into the CF-style hidden-flush API (Phase 13), then gained the runtime auto-atlaser (Phase 14) — sprites are packed into shared atlas pages so draw calls collapse to ~one per page. The next
+direction is the prioritized CF-parity roadmap in Phases 16–21 below.
 
 ---
 
@@ -161,16 +164,91 @@ slots in later behind the same registry.
 - [x] Ambient `Renderer.current` (App-installed) + `Draw.current`; `Sprite.draw(at:)` sugar.
 - [x] Demo showcases `Sprite(path:)` dedup, `sprite.draw(at:)`, and a looping generated sheet.
 
-## Known gaps / next
+---
 
-- Remaining CF draw-state stacks: `pushScissor`, `pushViewport`, `pushShapeAA`, `pushBlendState`.
-- Remaining SDF primitives: outline `circle`, `boxFill`, `capsule`, `polyline`, `tri`, rounded box.
-- Naming: our `ScaleMode` vs CF's `cf_draw_push_filter` (NEAREST/LINEAR/SMOOTH) — consider aligning.
-- Verify the WASI/WebGPU build end-to-end (the `WebRenderer` port is untested).
-- `.swift-format` config + README screenshots (Phase 12 tail).
-- Auto-atlaser follow-ups (Phase 14): LRU decay/eviction (`tick()` + space reclaim / page compaction);
-  unified ordered draw buffer so sprites interleave with shapes/text within a layer by call order;
-  put the white pixel in the atlas so SDF shapes batch with sprites; web-backend atlas parity.
-- Aseprite (`.ase`) loading: parse frames/tags/durations into the `SpriteRegistry`'s asset model
-  (the registry, animation playback, and named-animation lookup already exist — this is just a
-  decoder feeding multiple animations instead of one `"default"`).
+## Post-v0 roadmap — top 5 for gamedev (CF parity)
+
+v0 is a rendering core; these are the next areas that make Bielik2D something you can ship a
+game in, ranked by impact (lens: ship games soonest, measured against Cute Framework's API
+surface — https://randygaul.github.io/cute_framework/api_reference/). CF's data-structure and
+utility modules (array/list/map/string/json/atomic/allocator/path/file/…) are *not* gaps:
+Swift's stdlib + Foundation cover them. Sequencing: 16 → 20, interleaving 19 into 18 (both need
+capsule/poly shapes). Each phase is independently shippable and demo-able. Big features go on a
+worktree, TDD red-green.
+
+## Phase 16 — Input: keyboard (full) + mouse + gamepad ⏳
+
+The #1 blocker: today the surface is `App.keyJustPressed(scancode)` only — no held/released, no
+mouse, no gamepad, so most games are unplayable. CF parity: `key_down`/`just_pressed`/
+`just_released` + modifiers; mouse position/buttons/wheel/double-click; joypad buttons + analog
+sticks + triggers; an action-binding layer ("jump" → key OR button); haptic/rumble.
+
+- [ ] `Sources/Bielik2D/Input/` — `Keyboard`, `Mouse`, `Gamepad`, `InputBinding`/`Action`.
+- [ ] Accumulate per-frame state from the SDL event pump in `Backend/SDL3Platform.swift`;
+      `App.update()` tracks begin/end-frame edges (held vs just-pressed vs just-released).
+- [ ] Mouse position resolves through the active `Camera` (screen→world).
+- [ ] Tests feed synthetic event sequences (edge detection + binding resolution are pure).
+
+## Phase 17 — Audio: sound effects + music ⏳
+
+No game ships silent; absent today. CF parity: one-shot sounds with volume/pan/pitch/loop,
+streaming music with crossfade, global + per-sound volume, pause/resume.
+
+- [ ] `Sources/Bielik2D/Audio/` — `Sound`, `Music`, small mixer/`Audio` façade.
+- [ ] Add `SDL3_mixer` as a system lib (mirror the `sdl3_ttf` setup: `brew install sdl3_mixer`
+      + `Sources/CSDL3/module.modulemap`). Raw-SDL-audio-stream mixer is a later option.
+- [ ] Asset-load + mixer state (volumes, voice lifecycle) tested headless; playback in demo.
+
+## Phase 18 — Collision: 2D shapes + queries ⏳
+
+The gameplay enabler and a signature CF feature; pure math, zero GPU — ideal TDD, reuses
+`Sources/Bielik2D/Math/` (`Mat3x2`, `SIMD2`, `Rect`).
+
+- [ ] `Sources/Bielik2D/Collision/` — `Circle`, `AABB` (over `Rect`), `Capsule`, `Poly`, `Ray`.
+- [ ] `overlap(_:_:)` booleans → `manifold` (contact pts + depth + normal) → segment `raycast`
+      (normalize dir!) → `gjk` closest-points → swept `toi` → convex-hull builder.
+- [ ] Debug-draw shapes via `Draw` primitives (dovetails with Phase 19's capsule/poly).
+- [ ] Predicates tested against hand-computed expected results.
+
+## Phase 19 — Draw completeness: shapes, state stacks, text effects ⏳
+
+Half-built already (Phases 6/8), high return per effort, supports collision debug-draw + HUD.
+
+- [ ] SDF primitives: outline `circle`, `boxFill`, `capsule`, `polyline`, `tri`, rounded box —
+      extend `Draw/Primitives.swift` + the unified SDF shader (`Shaders/src/*.hlsl` + WGSL
+      overrides; capsule/poly add `ShapeType` branches).
+- [ ] Draw-state stacks `pushScissor` / `pushViewport` / `pushBlendState` / `pushShapeAA`
+      (reuse the generic `StateStack<T>` in `Draw.swift`).
+- [ ] Text effects (color markup, outline, shadow) in `Sources/Bielik2D/Text/`.
+- [ ] Align `ScaleMode` naming with CF's `cf_draw_push_filter` (NEAREST/LINEAR/SMOOTH).
+
+## Phase 20 — Coroutines & tweening: game-logic flow ⏳
+
+The ergonomics multiplier: cutscenes, AI scripts, timed sequences, UI animation — where game
+feel comes from.
+
+- [ ] `Sources/Bielik2D/Flow/` — frame-stepped `Tween` (from/to/duration/easing, `update(dt:)`)
+      + a coroutine/sequence runner. Explicit frame-stepping over Swift `async` (matches the
+      single-threaded immediate-mode loop + `App/Time.swift`'s `Clock`/`FrameTimer`).
+- [ ] Easing-function set lives here (the slice of "expanded math" worth keeping).
+- [ ] Tween interpolation + coroutine stepping tested deterministically with a fixed `dt`.
+
+## Phase 21 — Aseprite + sprite polish (honorable mention) ⏳
+
+Narrower than 16–20 (PNG sheets already ship), so it trails the top 5.
+
+- [ ] `.ase` decoder feeding the existing `SpriteRegistry`/animation model — the registry,
+      playback, and named-animation lookup already exist; this is a decoder producing multiple
+      animations instead of one `"default"`.
+- [ ] Phase-14 atlas follow-ups: LRU decay/eviction (`tick()` + space reclaim / page compaction);
+      unified ordered draw buffer so sprites interleave with shapes/text within a layer by call
+      order; put the white pixel in the atlas so SDF shapes batch with sprites; web-backend
+      atlas parity.
+
+## Deferred
+
+- Networking (`net`), web/browser (`web`) — single-player, native-first for now; verify the
+  WASI/WebGPU `WebRenderer` port (Phase 13, untested) before any web push.
+- `random` / `noise` / broader `math` beyond easing — useful for procedural gen, not on the
+  critical path to a first game.
+- Hygiene tail: `.swift-format` config + README screenshots (Phase 12).
