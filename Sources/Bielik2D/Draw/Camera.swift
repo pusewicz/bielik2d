@@ -46,4 +46,12 @@ public struct Camera {
     public var viewProjection: simd_float4x4 {
         projection * viewMatrix4x4
     }
+
+    /// Maps a point in window coordinates (origin top-left, +Y down — where SDL
+    /// reports the mouse) back into world space. The projection sizes the viewport
+    /// to `viewportSize`, so window coordinates equal post-`view` coordinates;
+    /// undoing `view` recovers the world point.
+    public func screenToWorld(_ point: SIMD2<Float>) -> SIMD2<Float> {
+        view.inverse.transform(point)
+    }
 }

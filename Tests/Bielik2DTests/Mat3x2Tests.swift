@@ -27,3 +27,13 @@ import Testing
     #expect(abs(p.x - 10) < 1e-4)
     #expect(abs(p.y - 1) < 1e-4)
 }
+
+@Test func inverseUndoesTransform() {
+    let m = Mat3x2.translation(x: 10, y: 0)
+        * Mat3x2.rotation(angleRadians: .pi / 2)
+        * Mat3x2.scale(2, 3)
+    let p = SIMD2<Float>(4, -7)
+    let back = m.inverse.transform(m.transform(p))
+    #expect(abs(back.x - p.x) < 1e-4)
+    #expect(abs(back.y - p.y) < 1e-4)
+}

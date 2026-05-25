@@ -43,4 +43,17 @@ public struct Mat3x2: Equatable, Sendable {
     public func transform(_ p: SIMD2<Float>) -> SIMD2<Float> {
         SIMD2(a * p.x + c * p.y + tx, b * p.x + d * p.y + ty)
     }
+
+    /// The inverse affine transform, so `m.inverse.transform(m.transform(p)) == p`.
+    /// Undefined when the linear part is singular (det == 0).
+    public var inverse: Mat3x2 {
+        let det = a * d - b * c
+        let invDet = 1 / det
+        let ia = d * invDet, ib = -b * invDet, ic = -c * invDet, id = a * invDet
+        return Mat3x2(
+            a: ia, b: ib, c: ic, d: id,
+            tx: -(ia * tx + ic * ty),
+            ty: -(ib * tx + id * ty)
+        )
+    }
 }
