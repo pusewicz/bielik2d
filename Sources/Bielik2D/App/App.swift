@@ -21,6 +21,9 @@ public final class App {
     public var isRunning: Bool { platform.windowHandle != nil && !platform.shouldQuit }
     public var window: OpaquePointer? { platform.windowHandle }
 
+    /// This frame's input state (keyboard, …). Updated by `update()`.
+    public var input: Input { platform.input }
+
     public init(title: String, width: Int, height: Int) throws {
         let plat = try SDL3Platform.start(title: title, width: width, height: height)
         do {
@@ -58,11 +61,6 @@ public final class App {
     public func drawOntoScreen(_ draw: Draw, clear: Color? = nil, camera: Camera? = nil) {
         let cam = camera ?? Camera(viewportSize: SIMD2(Float(platform.size.x), Float(platform.size.y)))
         draw.flush(through: renderer, camera: cam, clear: clear)
-    }
-
-    /// Returns true exactly on the frame the key transitioned from up to down.
-    public func keyJustPressed(_ scancode: SDL_Scancode) -> Bool {
-        platform.keyJustPressed(scancode.rawValue)
     }
 
     public func destroy() {

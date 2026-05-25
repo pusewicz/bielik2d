@@ -8,7 +8,7 @@ public final class SDL3Platform {
     public private(set) var windowHandle: OpaquePointer?
     public private(set) var size: SIMD2<Int>
     public private(set) var shouldQuit: Bool = false
-    private var keysJustPressed: Set<UInt32> = []
+    public let input = Input()
 
     private init(window: OpaquePointer, size: SIMD2<Int>) {
         self.windowHandle = window
@@ -27,24 +27,24 @@ public final class SDL3Platform {
     }
 
     public func pollEvents() {
-        keysJustPressed.removeAll(keepingCapacity: true)
+        input.beginFrame()
         var ev = SDL_Event()
         while SDL_PollEvent(&ev) {
             switch SDL_EventType(rawValue: ev.type) {
             case SDL_EVENT_QUIT, SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                 shouldQuit = true
             case SDL_EVENT_KEY_DOWN:
-                if !ev.key.repeat {
-                    keysJustPressed.insert(ev.key.scancode.rawValue)
+                if !ev.key.repeat, let key = Key(scancode: ev.key.scancode) {
+                    input.keyboard.press(key)
+                }
+            case SDL_EVENT_KEY_UP:
+                if let key = Key(scancode: ev.key.scancode) {
+                    input.keyboard.release(key)
                 }
             default:
                 break
             }
         }
-    }
-
-    public func keyJustPressed(_ scancode: UInt32) -> Bool {
-        keysJustPressed.contains(scancode)
     }
 
     public func stop() {

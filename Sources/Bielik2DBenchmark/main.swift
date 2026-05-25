@@ -1,5 +1,4 @@
 import Bielik2D
-import CSDL3
 import Foundation
 
 let windowSize = SIMD2<Float>(1280, 720)
@@ -93,17 +92,18 @@ var maxPresentNs: UInt64 = 0
 
 while app.isRunning {
     app.update()
-    if app.keyJustPressed(SDL_SCANCODE_SPACE) {
+    let keyboard = app.input.keyboard
+    if keyboard.pressed(.space) {
         mode = (mode == .shapes) ? .sprites : .shapes
     }
-    if app.keyJustPressed(SDL_SCANCODE_V) {
+    if keyboard.pressed(.v) {
         presentIndex = (presentIndex + 1) % presentModes.count
         app.setPresentMode(presentModes[presentIndex])
     }
-    if app.keyJustPressed(SDL_SCANCODE_EQUALS) || app.keyJustPressed(SDL_SCANCODE_KP_PLUS) {
+    if keyboard.pressed(.equals) || keyboard.pressed(.keypadPlus) {
         adjustEntityCount(by: countStep)
     }
-    if app.keyJustPressed(SDL_SCANCODE_MINUS) || app.keyJustPressed(SDL_SCANCODE_KP_MINUS) {
+    if keyboard.pressed(.minus) || keyboard.pressed(.keypadMinus) {
         adjustEntityCount(by: -countStep)
     }
 
