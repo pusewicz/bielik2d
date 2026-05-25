@@ -19,13 +19,13 @@ public final class Audio {
 
     private final class TrackBox {
         let track: OpaquePointer  // MIX_Track*
-        let sound: Sound  // retained so its audio data outlives playback
+        let owner: AnyObject  // the Sound/Music, retained so its data outlives playback
         var volume: Float
         var pan: Float
         var pitch: Float
-        init(track: OpaquePointer, sound: Sound, volume: Float, pan: Float, pitch: Float) {
+        init(track: OpaquePointer, owner: AnyObject, volume: Float, pan: Float, pitch: Float) {
             self.track = track
-            self.sound = sound
+            self.owner = owner
             self.volume = volume
             self.pan = pan
             self.pitch = pitch
@@ -33,6 +33,7 @@ public final class Audio {
     }
     private var boxes: [UInt64: TrackBox] = [:]
     private var nextID: UInt64 = 1
+    private var currentMusicID: UInt64?
 
     // MARK: - Lifecycle
 
@@ -93,27 +94,73 @@ public final class Audio {
 
     // MARK: - Playback
 
-    /// Play a sound, returning a `Voice` to control it. `loops`: 0 plays once, -1
-    /// loops forever, n repeats n extra times.
+    /// Play a sound effect, returning a `Voice` to control it. `loops`: 0 plays
+    /// once, -1 loops forever, n repeats n extra times.
     @discardableResult
     public func play(_ sound: Sound, volume: Float = 1, pan: Float = 0, pitch: Float = 1, loops: Int = 0) -> Voice {
+        playClip(handle: sound.handle, owner: sound, volume: volume, pan: pan, pitch: pitch, loops: loops, fadeIn: 0)
+    }
+
+    /// Start a music track (looping forever by default), optionally fading in over
+    /// `fadeIn` seconds. Becomes the current track for `crossfade(to:over:)`.
+    @discardableResult
+    public func playMusic(_ music: Music, volume: Float = 1, loops: Int = -1, fadeIn: Double = 0) -> Voice {
+        let voice = playClip(handle: music.handle, owner: music, volume: volume, pan: 0, pitch: 1, loops: loops, fadeIn: fadeIn)
+        currentMusicID = voice.id
+        return voice
+    }
+
+    /// Crossfade from the current music to `music` over `seconds`: the outgoing
+    /// track fades out while the incoming one fades in, overlapping for a true
+    /// crossfade. Returns the incoming `Voice`.
+    @discardableResult
+    public func crossfade(to music: Music, over seconds: Double, volume: Float = 1, loops: Int = -1) -> Voice {
+        if let current = currentMusicID { stopVoice(current, fadeOut: seconds) }
+        return playMusic(music, volume: volume, loops: loops, fadeIn: seconds)
+    }
+
+    private func playClip(handle: OpaquePointer, owner: AnyObject, volume: Float, pan: Float, pitch: Float, loops: Int, fadeIn: Double) -> Voice {
         let id = nextID
         nextID += 1
         guard let track = MIX_CreateTrack(mixer) else { return Voice(id: id, audio: self) }
-        MIX_SetTrackAudio(track, sound.handle)
-        boxes[id] = TrackBox(track: track, sound: sound, volume: volume, pan: pan, pitch: pitch)
+        MIX_SetTrackAudio(track, handle)
+        boxes[id] = TrackBox(track: track, owner: owner, volume: volume, pan: pan, pitch: pitch)
         applyGain(id)
         applyPan(id)
         applyPitch(id)
 
         var options: SDL_PropertiesID = 0
-        if loops != 0 {
+        if loops != 0 || fadeIn > 0 {
             options = SDL_CreateProperties()
-            SDL_SetNumberProperty(options, MIX_PROP_PLAY_LOOPS_NUMBER, Sint64(loops))
+            if loops != 0 {
+                SDL_SetNumberProperty(options, MIX_PROP_PLAY_LOOPS_NUMBER, Sint64(loops))
+            }
+            if fadeIn > 0 {
+                let frames = MIX_TrackMSToFrames(track, Sint64(fadeIn * 1000))
+                SDL_SetNumberProperty(options, MIX_PROP_PLAY_FADE_IN_FRAMES_NUMBER, frames)
+            }
         }
         MIX_PlayTrack(track, options)
         if options != 0 { SDL_DestroyProperties(options) }
         return Voice(id: id, audio: self)
+    }
+
+    public func makeMusic(path: String) throws -> Music {
+        guard let handle = MIX_LoadAudio(mixer, path, false) else {
+            throw AudioError.loadFailed(lastSDLError())
+        }
+        return Music(handle: handle)
+    }
+
+    public func makeMusic(bytes: Data) throws -> Music {
+        // Predecode here: the borrowed pointer can't outlive this call, so we
+        // can't let the stream read it lazily later (unlike the path variant).
+        let handle: OpaquePointer? = bytes.withUnsafeBytes { raw in
+            guard let io = SDL_IOFromConstMem(raw.baseAddress, raw.count) else { return nil }
+            return MIX_LoadAudio_IO(mixer, io, true, true)
+        }
+        guard let handle else { throw AudioError.loadFailed(lastSDLError()) }
+        return Music(handle: handle)
     }
 
     /// Reclaim tracks whose sounds have finished. Call once per frame.
@@ -121,6 +168,7 @@ public final class Audio {
         for (id, box) in boxes where !MIX_TrackPlaying(box.track) {
             MIX_DestroyTrack(box.track)
             boxes[id] = nil
+            if id == currentMusicID { currentMusicID = nil }
         }
     }
 

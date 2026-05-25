@@ -74,6 +74,44 @@ struct AudioTests {
         }
         #expect(try framesUntilDone(pitch: 2) < framesUntilDone(pitch: 1))
     }
+
+    @Test func musicPlays() throws {
+        let audio = try Audio.memory()
+        let music = try audio.makeMusic(bytes: toneWav(seconds: 1))
+        let voice = audio.playMusic(music, loops: 0)
+        #expect(voice.isPlaying)
+        #expect(audio.render(frameCount: 512).contains { $0 != 0 })
+    }
+
+    @Test func crossfadeOverlapsOutgoingAndIncomingMusic() throws {
+        let audio = try Audio.memory()
+        let a = try audio.makeMusic(bytes: toneWav(seconds: 1, freq: 220))
+        let b = try audio.makeMusic(bytes: toneWav(seconds: 1, freq: 880))
+        let first = audio.playMusic(a, loops: 0)
+        #expect(first.isPlaying)
+
+        let second = audio.crossfade(to: b, over: 0.5)
+        // True crossfade: both the outgoing and incoming tracks play at once.
+        #expect(first.isPlaying)
+        #expect(second.isPlaying)
+        #expect(audio.activeCount == 2)
+    }
+
+    @Test func fadeInRampsVolumeUp() throws {
+        let audio = try Audio.memory()
+        let music = try audio.makeMusic(bytes: toneWav(seconds: 1))
+        _ = audio.playMusic(music, loops: 0, fadeIn: 0.5)
+        let early = rms(audio.render(frameCount: 256))
+        _ = audio.render(frameCount: 11_000)  // advance into the fade
+        let later = rms(audio.render(frameCount: 256))
+        #expect(later > early)
+    }
+}
+
+private func rms(_ s: [Float]) -> Float {
+    guard !s.isEmpty else { return 0 }
+    let sum = s.reduce(0) { $0 + $1 * $1 }
+    return (sum / Float(s.count)).squareRoot()
 }
 
 // MARK: - In-memory WAV fixture (no committed binary)
