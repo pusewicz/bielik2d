@@ -52,6 +52,28 @@ var lastTime = startTime
 var playerPos = windowSize / 2
 let moveSpeed: Float = 320
 
+// Audio showcase: a procedurally-generated decaying blip (no asset file needed).
+func blipWav() -> Data {
+    let sampleRate = 48_000
+    let frames = sampleRate * 12 / 100  // 0.12s
+    var bytes = [UInt8]()
+    func u32(_ v: Int) { let x = UInt32(v); bytes += [UInt8(x & 0xff), UInt8((x >> 8) & 0xff), UInt8((x >> 16) & 0xff), UInt8((x >> 24) & 0xff)] }
+    func u16(_ v: Int) { let x = UInt16(v); bytes += [UInt8(x & 0xff), UInt8((x >> 8) & 0xff)] }
+    func ascii(_ s: String) { bytes += Array(s.utf8) }
+    let dataSize = frames * 2
+    ascii("RIFF"); u32(36 + dataSize); ascii("WAVE")
+    ascii("fmt "); u32(16); u16(1); u16(1); u32(sampleRate); u32(sampleRate * 2); u16(2); u16(16)
+    ascii("data"); u32(dataSize)
+    for i in 0..<frames {
+        let tt = Double(i) / Double(sampleRate)
+        let s = sin(2 * .pi * 660 * tt) * exp(-tt * 18) * 0.6  // decaying tone
+        let v = UInt16(bitPattern: Int16(max(-1, min(1, s)) * 32767))
+        bytes.append(UInt8(v & 0xff)); bytes.append(UInt8((v >> 8) & 0xff))
+    }
+    return Data(bytes)
+}
+let blip = try app.audio?.makeSound(bytes: blipWav())
+
 while app.isRunning {
     app.update()
 
@@ -71,6 +93,12 @@ while app.isRunning {
     if keyboard.down(.s) || keyboard.down(.down) { move.y += 1 }
     move += gamepad.leftStick
     playerPos += move * moveSpeed * Float(dt)
+
+    // Space fires the blip with a random pitch, panned by the mouse's x position.
+    if keyboard.pressed(.space), let blip {
+        let pan = app.input.mouse.position.x / windowSize.x * 2 - 1
+        blip.play(pan: pan, pitch: Float.random(in: 0.8...1.4))
+    }
 
     // Canvas pass: a spinning pink quad, in canvas-local coords. `with` scopes
     // the transform + tint and pops them automatically.
@@ -116,7 +144,7 @@ while app.isRunning {
     controlled.scale = SIMD2(2, 2)
     controlled.scaleMode = .nearest
     controlled.draw(at: playerPos)
-    draw.text("WASD / arrows / left-stick to move", font: font, at: SIMD2(40, 80), color: .white)
+    draw.text("WASD / arrows / left-stick to move · space: blip", font: font, at: SIMD2(40, 80), color: .white)
 
     // Mouse aim: a dot at the cursor in world space (via screenToWorld), larger
     // while the left button is held.

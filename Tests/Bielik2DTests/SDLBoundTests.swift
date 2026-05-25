@@ -76,4 +76,32 @@ struct SDLBoundTests {
         #expect(!app.input.keyboard.pressed(.space))
         #expect(app.input.keyboard.down(.space))  // still held
     }
+
+    // Audio ambient/lifecycle tests live here so every `Audio.current` mutation
+    // is serialized alongside App creation (which also installs the ambient).
+
+    @Test func ambientSoundPlayResolvesCurrentAudio() throws {
+        let audio = try Audio.memory()
+        Audio.current = audio
+        defer { Audio.current = nil }
+        let sound = try audio.makeSound(bytes: toneWav())
+        let voice = sound.play()
+        #expect(voice?.isPlaying == true)
+    }
+
+    @Test func soundPathInitThrowsWithoutAmbientAudio() {
+        Audio.current = nil
+        #expect(throws: AudioError.self) {
+            _ = try Sound(path: "/definitely/not/a/file.wav")
+        }
+    }
+
+    @Test func appExposesAudioAndInstallsItAsAmbient() throws {
+        let app = try App(title: "audio app", width: 320, height: 200)
+        defer { app.destroy() }
+        // A host without an output device may have nil audio; if present, it's ambient.
+        if let audio = app.audio {
+            #expect(Audio.current === audio)
+        }
+    }
 }

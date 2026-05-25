@@ -9,6 +9,10 @@ import Foundation
 /// Tracks are created per `play` and reclaimed by `update()` once they finish, so
 /// the app loop must call `update()` each frame (`App.update()` does this).
 public final class Audio {
+    /// The ambient mixer `App` installs so `Sound(path:)` and `sound.play()`
+    /// resolve without an explicit handle. Last app created wins.
+    nonisolated(unsafe) public static var current: Audio?
+
     let mixer: OpaquePointer  // MIX_Mixer*
     private var destroyed = false
 
@@ -75,10 +79,15 @@ public final class Audio {
     // MARK: - Loading
 
     public func makeSound(path: String) throws -> Sound {
-        guard let handle = MIX_LoadAudio(mixer, path, true) else {
+        Sound(handle: try Audio.loadHandle(mixer: mixer, path: path, predecode: true))
+    }
+
+    /// Shared path loader for `makeSound`/`makeMusic` and the ambient `Sound(path:)`.
+    static func loadHandle(mixer: OpaquePointer, path: String, predecode: Bool) throws -> OpaquePointer {
+        guard let handle = MIX_LoadAudio(mixer, path, predecode) else {
             throw AudioError.loadFailed(lastSDLError())
         }
-        return Sound(handle: handle)
+        return handle
     }
 
     public func makeSound(bytes: Data) throws -> Sound {
@@ -146,10 +155,7 @@ public final class Audio {
     }
 
     public func makeMusic(path: String) throws -> Music {
-        guard let handle = MIX_LoadAudio(mixer, path, false) else {
-            throw AudioError.loadFailed(lastSDLError())
-        }
-        return Music(handle: handle)
+        Music(handle: try Audio.loadHandle(mixer: mixer, path: path, predecode: false))
     }
 
     public func makeMusic(bytes: Data) throws -> Music {

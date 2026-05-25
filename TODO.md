@@ -192,15 +192,20 @@ triggers. The action-binding layer and haptic/rumble are the deferred follow-up.
 - [x] Pure device tests feed synthetic transitions; SDL-bound tests push events through the pump.
 - [ ] `InputBinding`/`Action` map ("jump" → key OR button) + haptic/rumble — follow-up worktree.
 
-## Phase 17 — Audio: sound effects + music ⏳
+## Phase 17 — Audio: sound effects + music 🟡
 
-No game ships silent; absent today. CF parity: one-shot sounds with volume/pan/pitch/loop,
-streaming music with crossfade, global + per-sound volume, pause/resume.
+No game ships silent. Built on SDL3_mixer's modern `MIX_*` track API, reached via `app.audio`.
+Pitch, gain, stereo pan, and fades are native to the track API — no custom DSP needed after all.
 
-- [ ] `Sources/Bielik2D/Audio/` — `Sound`, `Music`, small mixer/`Audio` façade.
-- [ ] Add `SDL3_mixer` as a system lib (mirror the `sdl3_ttf` setup: `brew install sdl3_mixer`
-      + `Sources/CSDL3/module.modulemap`). Raw-SDL-audio-stream mixer is a later option.
-- [ ] Asset-load + mixer state (volumes, voice lifecycle) tested headless; playback in demo.
+- [x] `Sources/Bielik2D/Audio/` — `Sound` (SFX), `Music` (streamed), `Voice` (volume/pan/pitch/
+      stop-with-fade/isPlaying), and the `Audio` mixer façade. `play(loops:)`, `playMusic(fadeIn:)`,
+      `crossfade(to:over:)` (true overlap), master volume; ambient `Audio.current` so `Sound(path:)`
+      and `sound.play()` mirror `Sprite(path:)`. SFX pitch is dynamic (`MIX_SetTrackFrequencyRatio`).
+- [x] `SDL3_mixer` linked through the C shim (`shim.h` + `module.modulemap`); `SDL_INIT_AUDIO`.
+- [x] Headless behavioral tests via a **memory mixer** (`MIX_CreateMixer` + `MIX_Generate`): plays →
+      signal, gain 0 → silence, pan → channel bias, pitch 2× → half duration, crossfade → overlap.
+      In-memory WAV fixture (no committed binary). Demo: space fires a pitched, mouse-panned blip.
+- [ ] Deferred (minor): `Voice` pause/resume, per-category buses (`MIX_Group`), 3D positional audio.
 
 ## Phase 18 — Collision: 2D shapes + queries ⏳
 

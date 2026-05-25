@@ -9,6 +9,15 @@ public final class Music {
 
     init(handle: OpaquePointer) { self.handle = handle }
 
+    /// Load through the ambient `Audio.current` (installed by `App`). Throws if no
+    /// app has installed an audio mixer.
+    public convenience init(path: String) throws {
+        guard let audio = Audio.current else {
+            throw AudioError.loadFailed("no ambient Audio installed")
+        }
+        self.init(handle: try Audio.loadHandle(mixer: audio.mixer, path: path, predecode: false))
+    }
+
     deinit { MIX_DestroyAudio(handle) }
 }
 #endif

@@ -17,7 +17,7 @@ public final class SDL3Platform {
     }
 
     public static func start(title: String, width: Int, height: Int) throws -> SDL3Platform {
-        guard SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) else {
+        guard SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO) else {
             throw AppError.sdlInit(lastSDLError())
         }
         guard let win = SDL_CreateWindow(title, Int32(width), Int32(height), SDL_WINDOW_HIGH_PIXEL_DENSITY) else {

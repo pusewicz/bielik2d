@@ -18,6 +18,10 @@ public final class App {
     public let renderer: Renderer
     let platform: SDL3Platform
 
+    /// The audio mixer, or nil if no output device could be opened. Also installed
+    /// as the ambient `Audio.current` so `Sound(path:)` and `sound.play()` work.
+    public private(set) var audio: Audio?
+
     public var isRunning: Bool { platform.windowHandle != nil && !platform.shouldQuit }
     public var window: OpaquePointer? { platform.windowHandle }
 
@@ -38,10 +42,14 @@ public final class App {
         // Make this the ambient renderer so bare `Sprite(path:)` and `sprite.update`
         // resolve against it. Last app created wins.
         Renderer.current = renderer
+        // Audio is best-effort: a host with no output device runs silently.
+        self.audio = try? Audio()
+        Audio.current = audio
     }
 
     public func update() {
         platform.pollEvents()
+        audio?.update()
     }
 
     /// The active GPU backend name (e.g. "metal"). Diagnostics only.
@@ -64,6 +72,9 @@ public final class App {
     }
 
     public func destroy() {
+        if Audio.current === audio { Audio.current = nil }
+        audio?.destroy()
+        audio = nil
         if Renderer.current === renderer { Renderer.current = nil }
         renderer.destroy()
         if let win = platform.windowHandle {

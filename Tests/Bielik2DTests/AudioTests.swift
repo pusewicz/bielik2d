@@ -116,7 +116,7 @@ private func rms(_ s: [Float]) -> Float {
 
 // MARK: - In-memory WAV fixture (no committed binary)
 
-private func toneWav(seconds: Double = 0.1, freq: Double = 440, sampleRate: Int = 48000) -> Data {
+func toneWav(seconds: Double = 0.1, freq: Double = 440, sampleRate: Int = 48000) -> Data {
     let frames = Int(Double(sampleRate) * seconds)
     var samples = [Int16]()
     samples.reserveCapacity(frames)
@@ -127,7 +127,7 @@ private func toneWav(seconds: Double = 0.1, freq: Double = 440, sampleRate: Int 
     return wavContainer(samples: samples, sampleRate: sampleRate)
 }
 
-private func wavContainer(samples: [Int16], sampleRate: Int, channels: Int = 1) -> Data {
+func wavContainer(samples: [Int16], sampleRate: Int, channels: Int = 1) -> Data {
     let bitsPerSample = 16
     let blockAlign = channels * bitsPerSample / 8
     let byteRate = sampleRate * blockAlign
