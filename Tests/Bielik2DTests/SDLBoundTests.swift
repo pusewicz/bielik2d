@@ -96,6 +96,15 @@ struct SDLBoundTests {
         }
     }
 
+    @Test func appExposesHiDPIProperties() throws {
+        let app = try App(title: "hidpi app", width: 320, height: 200)
+        defer { app.destroy() }
+        #expect(app.size == SIMD2<Int>(320, 200))
+        #expect(app.sizeInPixels.x >= app.size.x)
+        #expect(app.sizeInPixels.y >= app.size.y)
+        #expect(app.pixelDensity >= 1.0)
+    }
+
     @Test func appExposesAudioAndInstallsItAsAmbient() throws {
         let app = try App(title: "audio app", width: 320, height: 200)
         defer { app.destroy() }

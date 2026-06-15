@@ -25,6 +25,13 @@ public final class App {
     public var isRunning: Bool { platform.windowHandle != nil && !platform.shouldQuit }
     public var window: OpaquePointer? { platform.windowHandle }
 
+    /// Logical window size in points. Use this for game logic and camera setup.
+    public var size: SIMD2<Int> { platform.size }
+    /// Physical drawable size in pixels — larger than `size` on HiDPI displays.
+    public var sizeInPixels: SIMD2<Int> { platform.sizeInPixels }
+    /// Pixels per logical point (e.g. 2.0 on a Retina / 2× display).
+    public var pixelDensity: Float { platform.pixelDensity }
+
     /// This frame's input state (keyboard, …). Updated by `update()`.
     public var input: Input { platform.input }
 
