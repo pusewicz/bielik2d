@@ -35,6 +35,21 @@ public final class App {
     /// This frame's input state (keyboard, …). Updated by `update()`.
     public var input: Input { platform.input }
 
+    /// The wall clock; `update()` pulls one frame delta per call.
+    private let clock = Clock()
+    /// Seconds elapsed during the last `update()`, clamped so a stall (asset load,
+    /// breakpoint, window drag) can't blow up tweens with one giant step.
+    public private(set) var deltaTime: Double = 0
+    /// Total elapsed seconds — the running sum of the clamped per-frame deltas.
+    public private(set) var time: Double = 0
+    /// The ambient coroutine/tween runner, advanced automatically by `update()`.
+    /// Also installed as `Flow.current` so `app.flow.run { … }` and the bare
+    /// `Flow.current` resolve to the same instance.
+    public let flow = Flow()
+
+    /// Longest frame `update()` will report; the spike guard for the flow runner.
+    private static let maxFrameSeconds = 0.1
+
     public init(title: String, width: Int, height: Int) throws {
         let plat = try SDL3Platform.start(title: title, width: width, height: height)
         do {
@@ -55,11 +70,16 @@ public final class App {
         // Audio is best-effort: a host with no output device runs silently.
         self.audio = try? Audio()
         Audio.current = audio
+        Flow.current = flow
     }
 
     public func update() {
         platform.pollEvents()
         audio?.update()
+        let dt = min(clock.tickSeconds(), App.maxFrameSeconds)
+        deltaTime = dt
+        time += dt
+        flow.update(dt)
     }
 
     /// The active GPU backend name (e.g. "metal"). Diagnostics only.
@@ -82,6 +102,8 @@ public final class App {
     }
 
     public func destroy() {
+        if Flow.current === flow { Flow.current = nil }
+        flow.stopAll()
         if Audio.current === audio { Audio.current = nil }
         audio?.destroy()
         audio = nil

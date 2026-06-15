@@ -45,8 +45,6 @@ let canvasSize = SIMD2<Float>(256, 256)
 let draw = Draw(textEngine: try app.renderer.makeTextEngine())
 let cameraCanvas = Camera(viewportSize: canvasSize)
 let camera = Camera(viewportSize: windowSize)
-let startTime = Date()
-var lastTime = startTime
 
 // Input showcase: a sprite the player drives, plus a cursor dot.
 var playerPos = windowSize / 2
@@ -74,13 +72,32 @@ func blipWav() -> Data {
 }
 let blip = try app.audio?.makeSound(bytes: blipWav())
 
+// Flow showcase: tweens + a coroutine sequence, advanced automatically by
+// `app.flow` inside `app.update()`. A keypath tween needs a reference target, so
+// the animated state lives on a small class.
+final class Pulser {
+    var scale: Float = 1
+    var tint = Color(r: 1.0, g: 0.85, b: 0.2)
+    var pos: SIMD2<Float>
+    init(pos: SIMD2<Float>) { self.pos = pos }
+}
+let pulser = Pulser(pos: SIMD2(windowSize.x / 2, 170))
+let home = pulser.pos
+// A forever heartbeat: swell with an overshooting back-ease, settle, repeat.
+app.flow.run {
+    Repeat {
+        Tween(pulser, \.scale, to: 1.6, over: 0.5, ease: .outBack)
+        Tween(pulser, \.scale, to: 1.0, over: 0.5, ease: .inOutQuad)
+    }
+}
+
 while app.isRunning {
     app.update()
 
-    let now = Date()
-    let t = Float(now.timeIntervalSince(startTime))
-    let dt = now.timeIntervalSince(lastTime)
-    lastTime = now
+    // The App owns the clock now: `update()` produced this frame's delta and the
+    // running total, and already stepped every live tween/coroutine.
+    let t = Float(app.time)
+    let dt = app.deltaTime
 
     // Move the player with WASD/arrows (digital) or the left stick (analog). +Y
     // is down, so "up" is -Y. Held state drives continuous movement.
@@ -100,6 +117,20 @@ while app.isRunning {
         blip.play(pan: pan, pitch: Float.random(in: 0.8...1.4))
     }
 
+    // F launches a one-shot coroutine: dash right (eased), flash blue in parallel,
+    // hold, then ease back home. Stacks over the heartbeat already running.
+    if keyboard.pressed(.f) {
+        app.flow.run {
+            Parallel {
+                Tween(pulser, \.pos, to: home + SIMD2(220, 0), over: 0.4, ease: .outCubic)
+                Tween(pulser, \.tint, to: Color(r: 0.3, g: 0.9, b: 1.0), over: 0.3)
+            }
+            Wait(0.2)
+            Tween(pulser, \.pos, to: home, over: 0.6, ease: .inOutBack)
+            Tween(pulser, \.tint, to: Color(r: 1.0, g: 0.85, b: 0.2), over: 0.4)
+        }
+    }
+
     // Canvas pass: a spinning pink quad, in canvas-local coords. `with` scopes
     // the transform + tint and pops them automatically.
     draw.with(transform: .translation(x: canvasSize.x / 2, y: canvasSize.y / 2) * .rotation(angleRadians: t),
@@ -110,6 +141,14 @@ while app.isRunning {
 
     // Main pass.
     draw.text("Hello, Bielik!", font: font, at: SIMD2<Float>(40, 40), color: .white)
+
+    // The flow-driven pulser: a box whose scale/position/tint are entirely owned
+    // by tweens and coroutines stepped in `app.update()`.
+    draw.with(transform: .translation(x: pulser.pos.x, y: pulser.pos.y)
+                * .scale(pulser.scale, pulser.scale),
+              color: pulser.tint) {
+        draw.box(Rect(x: -28, y: -28, width: 56, height: 56))
+    }
     draw.circleFill(center: SIMD2(120, 150), radius: 50, color: Color(r: 0.4, g: 0.8, b: 1.0))
     draw.line(from: SIMD2(210, 110), to: SIMD2(360, 190),
               thickness: 8, color: Color(r: 1.0, g: 0.9, b: 0.3))
@@ -144,7 +183,7 @@ while app.isRunning {
     controlled.scale = SIMD2(2, 2)
     controlled.scaleMode = .nearest
     controlled.draw(at: playerPos)
-    draw.text("WASD / arrows / left-stick to move · space: blip", font: font, at: SIMD2(40, 80), color: .white)
+    draw.text("WASD / arrows / left-stick to move · space: blip · F: tween dash", font: font, at: SIMD2(40, 80), color: .white)
 
     // Mouse aim: a dot at the cursor in world space (via screenToWorld), larger
     // while the left button is held.
