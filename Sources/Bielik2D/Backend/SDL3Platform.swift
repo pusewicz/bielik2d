@@ -6,14 +6,21 @@ import CSDL3
 /// the lifecycle plumbing.
 public final class SDL3Platform {
     public private(set) var windowHandle: OpaquePointer?
+    /// Logical window size in points — use this for game logic and camera setup.
     public private(set) var size: SIMD2<Int>
+    /// Physical drawable size in pixels — larger than `size` on HiDPI displays.
+    public private(set) var sizeInPixels: SIMD2<Int>
+    /// Pixels per logical point (e.g. 2.0 on a Retina / 2× display).
+    public private(set) var pixelDensity: Float
     public private(set) var shouldQuit: Bool = false
     public let input = Input()
     private var gamepadHandles: [Int: OpaquePointer] = [:]
 
-    private init(window: OpaquePointer, size: SIMD2<Int>) {
+    private init(window: OpaquePointer, size: SIMD2<Int>, sizeInPixels: SIMD2<Int>, pixelDensity: Float) {
         self.windowHandle = window
         self.size = size
+        self.sizeInPixels = sizeInPixels
+        self.pixelDensity = pixelDensity
     }
 
     public static func start(title: String, width: Int, height: Int) throws -> SDL3Platform {
@@ -24,7 +31,16 @@ public final class SDL3Platform {
             SDL_Quit()
             throw AppError.createWindow(lastSDLError())
         }
-        return SDL3Platform(window: win, size: SIMD2(width, height))
+        var pw: Int32 = Int32(width)
+        var ph: Int32 = Int32(height)
+        SDL_GetWindowSizeInPixels(win, &pw, &ph)
+        let density = SDL_GetWindowPixelDensity(win)
+        return SDL3Platform(
+            window: win,
+            size: SIMD2(width, height),
+            sizeInPixels: SIMD2(Int(pw), Int(ph)),
+            pixelDensity: density > 0 ? density : 1.0
+        )
     }
 
     public func pollEvents() {

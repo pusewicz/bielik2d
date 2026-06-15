@@ -16,6 +16,19 @@ struct SDL3PlatformTests {
         #expect(!platform.shouldQuit)
     }
 
+    @Test func hiDPIInvariantsHold() throws {
+        let platform = try SDL3Platform.start(title: "hidpi invariants", width: 320, height: 200)
+        defer { platform.stop() }
+        // Pixel size must be at least as large as logical size on any display.
+        #expect(platform.sizeInPixels.x >= platform.size.x)
+        #expect(platform.sizeInPixels.y >= platform.size.y)
+        // Pixel density must be ≥ 1.0 on any real display.
+        #expect(platform.pixelDensity >= 1.0)
+        // Density must approximately match the ratio of pixel to logical width.
+        let ratio = Float(platform.sizeInPixels.x) / Float(platform.size.x)
+        #expect(abs(platform.pixelDensity - ratio) < 0.05)
+    }
+
     @Test func pollEventsFlipsShouldQuitOnQuitEvent() throws {
         let platform = try SDL3Platform.start(title: "platform quit", width: 64, height: 64)
         defer { platform.stop() }
