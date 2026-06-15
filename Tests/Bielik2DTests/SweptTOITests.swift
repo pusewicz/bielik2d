@@ -29,3 +29,17 @@ import kvSIMD
     let mover = Circle(center: SIMD2(0, 0), radius: 1)
     #expect(mover.sweep(by: SIMD2(0, 5), against: Circle(center: SIMD2(20, 0), radius: 1)) == nil)
 }
+
+@Test func sweepBothMovingReportsWorldSpaceContact() {
+    // mover (0,0) r1 by (20,0); target (10,0) r1 by (10,0) -> relDelta (10,0).
+    // Cores 10 apart, minus radii 2 -> gap 8; relative speed 10 -> t = 0.8.
+    // At t=0.8 the (moving) target center is (18,0); contact on its left surface is (17,0).
+    let mover = Circle(center: SIMD2(0, 0), radius: 1)
+    let hit = mover.sweep(by: SIMD2(20, 0),
+                          against: Circle(center: SIMD2(10, 0), radius: 1),
+                          movedBy: SIMD2(10, 0))
+    #expect(hit != nil)
+    #expect(abs(hit!.t - 0.8) < 1e-2)
+    #expect(abs(hit!.point.x - 17) < 5e-2)
+    #expect(abs(hit!.point.y) < 5e-2)
+}

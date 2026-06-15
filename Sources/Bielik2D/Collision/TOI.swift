@@ -63,6 +63,9 @@ extension Circle {
     /// `targetDelta`). `ToI.t` is the fraction of `delta` at first contact. `nil` = clean miss.
     public func sweep(by delta: SIMD2<Float>, against target: Circle,
                       movedBy targetDelta: SIMD2<Float> = .zero) -> ToI? {
-        sweptTOIConvex(mover: support, target: target.support, relDelta: delta - targetDelta)
+        guard var toi = sweptTOIConvex(mover: support, target: target.support,
+                                       relDelta: delta - targetDelta) else { return nil }
+        toi.point += targetDelta * toi.t   // core works in the target's rest frame -> back to world
+        return toi
     }
 }
