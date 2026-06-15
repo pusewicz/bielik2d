@@ -230,16 +230,22 @@ Half-built already (Phases 6/8), high return per effort, supports collision debu
 - [ ] Text effects (color markup, outline, shadow) in `Sources/Bielik2D/Text/`.
 - [ ] Align `ScaleMode` naming with CF's `cf_draw_push_filter` (NEAREST/LINEAR/SMOOTH).
 
-## Phase 20 — Coroutines & tweening: game-logic flow ⏳
+## Phase 20 — Coroutines & tweening: game-logic flow ✅
 
 The ergonomics multiplier: cutscenes, AI scripts, timed sequences, UI animation — where game
-feel comes from.
+feel comes from. Built as frame-stepped `FlowStep`s with overflow forwarding (mirrors
+`Animation.advanced`); the `Routine { … }` / `Parallel { … }` / `Repeat { … }` result-builder DSL
+is the ergonomic surface. Tweens write through a `ReferenceWritableKeyPath` onto a reference
+target (start value captured lazily, target held weakly). `App` owns a `Clock`, exposes
+`deltaTime` / `time`, and auto-drives `Flow.current` each `update()`.
 
-- [ ] `Sources/Bielik2D/Flow/` — frame-stepped `Tween` (from/to/duration/easing, `update(dt:)`)
-      + a coroutine/sequence runner. Explicit frame-stepping over Swift `async` (matches the
-      single-threaded immediate-mode loop + `App/Time.swift`'s `Clock`/`FrameTimer`).
-- [ ] Easing-function set lives here (the slice of "expanded math" worth keeping).
-- [ ] Tween interpolation + coroutine stepping tested deterministically with a fixed `dt`.
+- [x] `Sources/Bielik2D/Flow/` — frame-stepped `Tween` (keypath/to/duration/easing) + a
+      coroutine/sequence runner (`Flow`, `Routine`/`Parallel`/`Repeat`/`Wait`/`Run`, cancellable
+      `RoutineHandle`). Explicit frame-stepping over Swift `async`; reuses `App/Time.swift`'s `Clock`.
+- [x] Easing-function set (`Easing.swift`) — the full Penner set (in/out/inOut across
+      quad/cubic/quart/quint/sine/expo/circ/back/elastic/bounce + linear).
+- [x] `Lerpable` (Float/Double/SIMD2/Color/Rect); tween interpolation + coroutine stepping tested
+      deterministically with a fixed `dt`.
 
 ## Phase 21 — Aseprite + sprite polish (honorable mention) ⏳
 
