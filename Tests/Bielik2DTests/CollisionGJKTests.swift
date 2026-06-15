@@ -38,3 +38,30 @@ import kvSIMD
         #expect(distance < 1e-3)
     }
 }
+
+@Test func gjkOverlappingSquaresArePenetrating() {
+    let a = AABB(min: SIMD2(0, 0), max: SIMD2(2, 2)).support
+    let b = AABB(min: SIMD2(1, 1), max: SIMD2(3, 3)).support
+    if case .penetrating = gjkDistance(a, b) { } else {
+        Issue.record("expected penetrating for overlapping squares")
+    }
+}
+
+@Test func gjkDisjointSquaresAreSeparated() {
+    let a = AABB(min: SIMD2(0, 0), max: SIMD2(2, 2)).support
+    let b = AABB(min: SIMD2(5, 5), max: SIMD2(7, 7)).support
+    if case let .separated(distance, _, _, _) = gjkDistance(a, b) {
+        #expect(distance > 0)
+    } else {
+        Issue.record("expected separated for disjoint squares")
+    }
+}
+
+@Test func gjkContainedSquareIsPenetrating() {
+    // B fully inside A: origin is well inside the Minkowski difference.
+    let a = AABB(min: SIMD2(0, 0), max: SIMD2(10, 10)).support
+    let b = AABB(min: SIMD2(4, 4), max: SIMD2(6, 6)).support
+    if case .penetrating = gjkDistance(a, b) { } else {
+        Issue.record("expected penetrating for contained square")
+    }
+}
