@@ -44,3 +44,17 @@ private let floor = Halfspace(point: SIMD2(0, 0), normal: SIMD2(0, 1))
     #expect(floor.overlaps(tri))
     #expect(abs(floor.manifold(with: tri)!.depth - 0.5) < 1e-4)
 }
+
+@Test func rayHitsHalfspaceBoundary() {
+    let ray = Ray(origin: SIMD2(0, 3), direction: SIMD2(0, -1), length: 10)
+    let hit = ray.cast(against: floor)
+    #expect(hit != nil)
+    #expect(abs(hit!.t - 3) < 1e-4)
+    #expect(abs(hit!.point.y) < 1e-4)
+    #expect(abs(hit!.normal.y - 1) < 1e-4)               // faces back up toward origin
+}
+
+@Test func rayParallelToHalfspaceMisses() {
+    let ray = Ray(origin: SIMD2(0, 3), direction: SIMD2(1, 0), length: 10)
+    #expect(ray.cast(against: floor) == nil)
+}

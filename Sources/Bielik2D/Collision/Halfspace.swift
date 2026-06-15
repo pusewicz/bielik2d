@@ -58,3 +58,15 @@ extension Polygon {
     public func overlaps(_ o: Halfspace) -> Bool { o.overlaps(self) }
     public func manifold(with o: Halfspace) -> Manifold? { flipHS(o.manifold(with: self)) }
 }
+
+extension Ray {
+    /// Ray vs the half-space boundary line. The hit normal faces back toward the ray origin.
+    public func cast(against h: Halfspace) -> Raycast? {
+        let denom = simd_dot(h.normal, direction)
+        if abs(denom) < 1e-8 { return nil }                  // parallel to the boundary
+        let t = simd_dot(h.normal, h.point - origin) / denom
+        if t < 0 || t > length { return nil }
+        let n = denom < 0 ? h.normal : -h.normal
+        return Raycast(t: t, point: origin + direction * t, normal: n)
+    }
+}
