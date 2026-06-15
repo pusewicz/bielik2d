@@ -61,11 +61,12 @@ missing for shipping an actual game is **gameplay**: collision and richer draw p
 
 ## What to build next
 
-Collision's focused core (Phase 18) and coroutines/tweening (Phase 20) have shipped; the
-remaining top gaps:
+Collision's focused core (Phase 18), coroutines/tweening (Phase 20), and Phase 19's shape
+primitives have shipped; the remaining top gaps:
 
-1. **Draw completeness (Phase 19)** — `poly`/`tri` primitives (the `capsule` SDF already landed
-   with collision debug-draw), plus the state stacks (`pushScissor`/`pushBlendState`) and text
-   effects to round out the HUD/UI surface.
+1. **Draw completeness (Phase 19, remaining slices)** — the shape primitives landed (outline
+   `circle`, `tri`, `polyline`, `poly` outline, `boxFill`, `pushShapeAA`); still to do are the
+   draw-state stacks (`pushScissor`/`pushViewport`/`pushBlendState`) and text effects (color
+   markup, outline, shadow), plus filled convex `poly`.
 2. **Collision follow-up** — swept time-of-impact for continuous (tunnel-proof) collision, on top
    of the GJK/EPA core now in place.
