@@ -142,6 +142,11 @@ while app.isRunning {
     // Main pass.
     draw.text("Hello, Bielik!", font: font, at: SIMD2<Float>(40, 40), color: .white)
 
+    // HUD: how many draw calls the last main pass collapsed to (set by the renderer
+    // on each flush; here it's last frame's main-pass count, read before this flush).
+    draw.text("draw calls: \(app.renderer.lastDrawCallCount)", font: font,
+              at: SIMD2<Float>(40, windowSize.y - 36), color: Color(r: 0.6, g: 1.0, b: 0.7))
+
     // The flow-driven pulser: a box whose scale/position/tint are entirely owned
     // by tweens and coroutines stepped in `app.update()`.
     draw.with(transform: .translation(x: pulser.pos.x, y: pulser.pos.y)
