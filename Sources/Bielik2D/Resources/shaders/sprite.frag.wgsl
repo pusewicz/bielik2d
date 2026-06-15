@@ -85,10 +85,12 @@ fn main(in: FragInput) -> @location(0) vec4<f32> {
         return vec4<f32>(in.color.rgb, in.color.a * a);
     }
     if (t == 2) {
-        let half_band = in.stroke * 0.5 + in.aa;
-        let d = abs(in.uv.y) * half_band;
-        let core = in.stroke * 0.5;
-        let a = smoothstep(core + in.aa, core - in.aa, d);
+        // Line: box SDF for square end caps with AA on all four edges.
+        // uv is in line-centred world coords: x along the segment, y perpendicular.
+        // scaleData.x = halfLen (half the segment length in world units).
+        let halfLen = in.scaleData.x;
+        let dist = sdRoundBox(in.uv, vec2<f32>(halfLen, in.stroke * 0.5), 0.0);
+        let a = smoothstep(in.aa, -in.aa, dist);
         return vec4<f32>(in.color.rgb, in.color.a * a);
     }
     if (t == 3) {

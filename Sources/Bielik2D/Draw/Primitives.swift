@@ -63,35 +63,36 @@ extension Draw {
     /// Anti-aliased line segment with a given thickness.
     public func line(from a: SIMD2<Float>, to b: SIMD2<Float>, thickness: Float,
                      color: Color = .white, aa: Float = 1.5 / Draw.ambientPixelDensity) {
-        // Build a rotated bounding quad around the segment.
         let dir = b - a
         let len = simd_length(dir)
         guard len > 0 else { return }
-        let n = SIMD2<Float>(-dir.y, dir.x) / len
-        let half = thickness * 0.5 + aa
-        let p0 = a + n * half
-        let p1 = b + n * half
-        let p2 = b - n * half
-        let p3 = a - n * half
+        let d = dir / len
+        let n = SIMD2<Float>(-d.y, d.x)
+        let halfLen = len * 0.5
+        let halfBand = thickness * 0.5 + aa
         let tint = currentColor
         let modulated = SIMD4<Float>(color.r * tint.r, color.g * tint.g, color.b * tint.b, color.a * tint.a)
-
         let t = currentTransform
-        let tp0 = t.transform(p0)
-        let tp1 = t.transform(p1)
-        let tp2 = t.transform(p2)
-        let tp3 = t.transform(p3)
-
-        // UVs encode signed distance from segment along the major and minor axes.
-        let uvL = SIMD2<Float>(0, 1)
-        let uvR = SIMD2<Float>(0, -1)
+        // Extend the quad by `aa` past each endpoint so the end caps have room to fade.
+        let mid = (a + b) * 0.5
+        let tp0 = t.transform(mid - d * (halfLen + aa) + n * halfBand)
+        let tp1 = t.transform(mid + d * (halfLen + aa) + n * halfBand)
+        let tp2 = t.transform(mid + d * (halfLen + aa) - n * halfBand)
+        let tp3 = t.transform(mid - d * (halfLen + aa) - n * halfBand)
+        // UVs in line-centred coordinates: x along the segment (0 = midpoint),
+        // y perpendicular. Both axes are in world units so sdRoundBox can use them directly.
+        let uvTL = SIMD2<Float>(-(halfLen + aa),  halfBand)
+        let uvTR = SIMD2<Float>( (halfLen + aa),  halfBand)
+        let uvBR = SIMD2<Float>( (halfLen + aa), -halfBand)
+        let uvBL = SIMD2<Float>(-(halfLen + aa), -halfBand)
         emitSDFQuadCorners(
-            p0: tp0, uv0: uvL,
-            p1: tp1, uv1: uvL,
-            p2: tp2, uv2: uvR,
-            p3: tp3, uv3: uvR,
+            p0: tp0, uv0: uvTL,
+            p1: tp1, uv1: uvTR,
+            p2: tp2, uv2: uvBR,
+            p3: tp3, uv3: uvBL,
             type: .line, color: modulated,
-            radius: 0, stroke: thickness, aa: aa, fill: 0
+            radius: 0, stroke: thickness, aa: aa, fill: 0,
+            attributes: SIMD4<Float>(halfLen, 0, 0, 0)
         )
     }
 

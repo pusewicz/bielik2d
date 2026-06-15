@@ -81,12 +81,12 @@ float4 main(PSInput input) : SV_Target {
         return float4(input.color.rgb, input.color.a * a);
     }
     if (t == 2) {
-        // line: uv.y carries signed perpendicular distance in half-thickness+aa units
-        // half_thickness in same units = stroke/2 + aa, normalized to 1 at edge of aa band
-        float halfBand = (input.stroke * 0.5 + input.aa);
-        float d = abs(input.uv.y) * halfBand;       // 0 at centerline, halfBand at outer edge
-        float core = input.stroke * 0.5;
-        float a = smoothstep(core + input.aa, core - input.aa, d);
+        // Line: box SDF for square end caps with AA on all four edges.
+        // uv is in line-centred world coords: x along the segment, y perpendicular.
+        // scaleData.x = halfLen (half the segment length in world units).
+        float halfLen = input.scaleData.x;
+        float dist = sdRoundBox(input.uv, float2(halfLen, input.stroke * 0.5), 0.0);
+        float a = smoothstep(input.aa, -input.aa, dist);
         return float4(input.color.rgb, input.color.a * a);
     }
     if (t == 3) {
