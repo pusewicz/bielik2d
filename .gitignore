@@ -9,7 +9,9 @@ DerivedData/
 
 # editor / tooling metadata
 .serena/
-.claude/
+.claude/*
+# but track committed project skills (local settings stay ignored)
+!.claude/skills/
 
 # vendored install prefix produced by scripts/build-vendor.sh
 vendor/.install/
