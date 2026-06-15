@@ -122,3 +122,25 @@ import kvSIMD
     let mover = Circle(center: SIMD2(0, 0), radius: 1)
     #expect(mover.sweep(by: SIMD2(5, 0), against: Circle(center: SIMD2(20, 0), radius: 1)) == nil)
 }
+
+@Test func sweepCircleHitsPolygon() {
+    // Circle (0,0) r1 swept by (10,0) into a unit square centered (5,0). Right edge x=1,
+    // left face x=4 -> gap 3 -> t = 0.3.
+    let mover = Circle(center: SIMD2(0, 0), radius: 1)
+    let target = Polygon(vertices: [SIMD2(4, -1), SIMD2(6, -1), SIMD2(6, 1), SIMD2(4, 1)])
+    let hit = mover.sweep(by: SIMD2(10, 0), against: target)
+    #expect(hit != nil)
+    #expect(abs(hit!.t - 0.3) < 1e-2)
+    #expect(hit!.normal.x < -0.9)
+}
+
+@Test func sweepCapsuleHitsAABB() {
+    // Vertical capsule at x=0 (radius 1, right extent x=1) swept by (10,0) into a box whose
+    // left face is x=5. gap = 5 - 1 = 4 -> t = 0.4.
+    let mover = Capsule(a: SIMD2(0, -2), b: SIMD2(0, 2), radius: 1)
+    let box = AABB(min: SIMD2(5, -5), max: SIMD2(7, 5))
+    let hit = mover.sweep(by: SIMD2(10, 0), against: box)
+    #expect(hit != nil)
+    #expect(abs(hit!.t - 0.4) < 1e-2)
+    #expect(hit!.normal.x < -0.9)
+}

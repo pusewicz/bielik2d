@@ -51,3 +51,18 @@ import kvSIMD
     #expect(r.normals.count == 1)
     #expect(r.normals[0].x < -0.9)
 }
+
+@Test func moveIntoCornerStopsOnBothWalls() {
+    // Circle (5,5) r1 moving (-10,-10) into a corner: floor (solid below, normal (0,1)) and a
+    // left wall (solid at x<0, normal (1,0)), both through the origin. It should wedge near (1,1):
+    // net motion ~ (-4,-4) (plus tiny skin) with one contact normal per wall.
+    let mover = Circle(center: SIMD2(5, 5), radius: 1)
+    let floor = Halfspace(point: SIMD2(0, 0), normal: SIMD2(0, 1))
+    let wall = Halfspace(point: SIMD2(0, 0), normal: SIMD2(1, 0))
+    let r = mover.move(by: SIMD2(-10, -10), against: [floor, wall])
+    #expect(abs(r.motion.x + 4.0) < 1e-1)
+    #expect(abs(r.motion.y + 4.0) < 1e-1)
+    #expect(r.normals.count == 2)
+    #expect(r.normals.contains { $0.y > 0.9 })   // floor
+    #expect(r.normals.contains { $0.x > 0.9 })   // wall
+}
