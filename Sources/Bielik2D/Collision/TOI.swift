@@ -58,14 +58,52 @@ func sweptTOIConvex(mover: Support, target: Support, relDelta: SIMD2<Float>) -> 
     return nil                                                  // failed to converge -> treat as miss
 }
 
+/// Sweep a convex `mover` (already reduced to its `Support`) by `delta` against any collider,
+/// with the target optionally moving by `targetDelta`. Convex targets go through GJK conservative
+/// advancement; `Halfspace` uses the closed-form path (added in Task 4). Unsupported colliders
+/// return `nil`. The core works in the target's rest frame, so the contact point is translated
+/// back to world space here.
+func sweepConvex(_ mover: Support, by delta: SIMD2<Float>, movedBy targetDelta: SIMD2<Float>,
+                 against target: CollisionShape) -> ToI? {
+    let relDelta = delta - targetDelta
+    let result: ToI?
+    switch target {
+    case let c as Circle:   result = sweptTOIConvex(mover: mover, target: c.support, relDelta: relDelta)
+    case let a as AABB:     result = sweptTOIConvex(mover: mover, target: a.support, relDelta: relDelta)
+    case let c as Capsule:  result = sweptTOIConvex(mover: mover, target: c.support, relDelta: relDelta)
+    case let p as Polygon:  result = sweptTOIConvex(mover: mover, target: p.support, relDelta: relDelta)
+    default:                result = nil
+    }
+    guard var toi = result else { return nil }
+    toi.point += targetDelta * toi.t   // rest-frame contact -> world (no-op when targetDelta == .zero)
+    return toi
+}
+
 extension Circle {
-    /// Swept time-of-impact: sweep `self` by `delta` against `target` (optionally moving by
-    /// `targetDelta`). `ToI.t` is the fraction of `delta` at first contact. `nil` = clean miss.
-    public func sweep(by delta: SIMD2<Float>, against target: Circle,
+    /// Swept time-of-impact against any collider. `ToI.t` is the fraction of `delta` at first contact.
+    public func sweep(by delta: SIMD2<Float>, against target: CollisionShape,
                       movedBy targetDelta: SIMD2<Float> = .zero) -> ToI? {
-        guard var toi = sweptTOIConvex(mover: support, target: target.support,
-                                       relDelta: delta - targetDelta) else { return nil }
-        toi.point += targetDelta * toi.t   // core works in the target's rest frame -> back to world
-        return toi
+        sweepConvex(support, by: delta, movedBy: targetDelta, against: target)
+    }
+}
+
+extension AABB {
+    public func sweep(by delta: SIMD2<Float>, against target: CollisionShape,
+                      movedBy targetDelta: SIMD2<Float> = .zero) -> ToI? {
+        sweepConvex(support, by: delta, movedBy: targetDelta, against: target)
+    }
+}
+
+extension Capsule {
+    public func sweep(by delta: SIMD2<Float>, against target: CollisionShape,
+                      movedBy targetDelta: SIMD2<Float> = .zero) -> ToI? {
+        sweepConvex(support, by: delta, movedBy: targetDelta, against: target)
+    }
+}
+
+extension Polygon {
+    public func sweep(by delta: SIMD2<Float>, against target: CollisionShape,
+                      movedBy targetDelta: SIMD2<Float> = .zero) -> ToI? {
+        sweepConvex(support, by: delta, movedBy: targetDelta, against: target)
     }
 }
