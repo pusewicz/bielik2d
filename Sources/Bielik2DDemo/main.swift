@@ -104,7 +104,7 @@ while app.isRunning {
     // the transform + tint and pops them automatically.
     draw.with(transform: .translation(x: canvasSize.x / 2, y: canvasSize.y / 2) * .rotation(angleRadians: t),
               color: Color(r: 1.0, g: 0.4, b: 0.6)) {
-        draw.quad(rect: Rect(x: -90, y: -90, width: 180, height: 180), uv: unit, color: .one)
+        draw.box(Rect(x: -90, y: -90, width: 180, height: 180))
     }
     app.renderer.render(draw, to: canvas, clear: Color(r: 0.05, g: 0.10, b: 0.30), camera: cameraCanvas)
 
