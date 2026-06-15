@@ -32,6 +32,20 @@ fn sdRoundBox(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
     return length(max(d, vec2<f32>(0.0))) + min(max(d.x, d.y), 0.0) - r;
 }
 
+// Signed distance to the triangle (a, b, c). Negative inside. (Inigo Quilez.)
+fn sdTriangle(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>, c: vec2<f32>) -> f32 {
+    let e0 = b - a; let e1 = c - b; let e2 = a - c;
+    let v0 = p - a; let v1 = p - b; let v2 = p - c;
+    let pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
+    let pq1 = v1 - e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);
+    let pq2 = v2 - e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);
+    let s = sign(e0.x * e2.y - e0.y * e2.x);
+    let d = min(min(vec2<f32>(dot(pq0, pq0), s * (v0.x * e0.y - v0.y * e0.x)),
+                    vec2<f32>(dot(pq1, pq1), s * (v1.x * e1.y - v1.y * e1.x))),
+                    vec2<f32>(dot(pq2, pq2), s * (v2.x * e2.y - v2.y * e2.x)));
+    return -sqrt(d.x) * sign(d.y);
+}
+
 // SDL_SCALEMODE_PIXELART, matching sprite.frag.hlsl GetPixelArtUV.
 fn getPixelArtUV(uv: vec2<f32>, texSize: vec2<f32>, uvDdx: vec2<f32>, uvDdy: vec2<f32>) -> vec2<f32> {
     let boxSize = clamp((abs(uvDdx) + abs(uvDdy)) * texSize, vec2<f32>(1e-5), vec2<f32>(1.0));
@@ -126,6 +140,14 @@ fn main(in: FragInput) -> @location(0) vec4<f32> {
             a = smoothstep(halfStroke + in.aa, halfStroke - in.aa, abs(dist));
         }
         return vec4<f32>(in.color.rgb, in.color.a * a);
+    }
+    if (t == 5) {
+        let a = in.scaleData.xy;
+        let b = in.scaleData.zw;
+        let c = in.uvBounds.xy;
+        let dist = sdTriangle(in.uv, a, b, c);
+        let al = smoothstep(in.aa, -in.aa, dist);
+        return vec4<f32>(in.color.rgb, in.color.a * al);
     }
     return in.color;
 }

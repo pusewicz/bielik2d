@@ -70,6 +70,24 @@ import Testing
     #expect(v.radius == 20)
 }
 
+@Test func triFilledPacksCornersIntoVertexChannels() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    let a = SIMD2<Float>(0, 0), bb = SIMD2<Float>(30, 0), c = SIMD2<Float>(0, 30)
+    d.tri(a, bb, c)
+    #expect(b.vertices.count == 6)
+    let v = b.vertices.first!
+    #expect(v.type == ShapeType.triangle.rawValue)
+    #expect(v.fill == 1)
+    let centroid = (a + bb + c) / 3
+    #expect(abs(v.attributes.x - (a.x - centroid.x)) < 1e-3)
+    #expect(abs(v.attributes.y - (a.y - centroid.y)) < 1e-3)
+    #expect(abs(v.attributes.z - (bb.x - centroid.x)) < 1e-3)
+    #expect(abs(v.attributes.w - (bb.y - centroid.y)) < 1e-3)
+    #expect(abs(v.uvBounds.x - (c.x - centroid.x)) < 1e-3)
+    #expect(abs(v.uvBounds.y - (c.y - centroid.y)) < 1e-3)
+}
+
 @Test func lineEmitsQuadAlignedToSegment() {
     let b = Batcher()
     let d = Draw(batcher: b)

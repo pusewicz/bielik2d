@@ -13,6 +13,7 @@ public enum ShapeType: Float {
     case line = 2
     case box = 3
     case capsule = 4
+    case triangle = 5
 }
 
 extension Draw {
@@ -151,6 +152,38 @@ extension Draw {
         )
     }
 
+    /// Filled triangle with antialiased edges (SDF). Pass `stroke:` for an outline.
+    public func tri(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ c: SIMD2<Float>,
+                    color: Color = .white, aa: Float? = nil) {
+        let aa = aa ?? currentShapeAA
+        // Work in a centroid-local frame so uv and the packed corners share an origin.
+        let centroid = (a + b + c) / 3
+        let la = a - centroid, lb = b - centroid, lc = c - centroid
+        let minX = min(la.x, min(lb.x, lc.x)), maxX = max(la.x, max(lb.x, lc.x))
+        let minY = min(la.y, min(lb.y, lc.y)), maxY = max(la.y, max(lb.y, lc.y))
+        let pad = aa  // AA fringe around the triangle's bounding box
+        let qx0 = minX - pad, qx1 = maxX + pad
+        let qy0 = minY - pad, qy1 = maxY + pad
+        let tint = currentColor
+        let modulated = SIMD4<Float>(color.r * tint.r, color.g * tint.g,
+                                     color.b * tint.b, color.a * tint.a)
+        let t = currentTransform
+        let p0 = t.transform(centroid + SIMD2(qx0, qy0))
+        let p1 = t.transform(centroid + SIMD2(qx1, qy0))
+        let p2 = t.transform(centroid + SIMD2(qx1, qy1))
+        let p3 = t.transform(centroid + SIMD2(qx0, qy1))
+        emitSDFQuadCorners(
+            p0: p0, uv0: SIMD2(qx0, qy0),
+            p1: p1, uv1: SIMD2(qx1, qy0),
+            p2: p2, uv2: SIMD2(qx1, qy1),
+            p3: p3, uv3: SIMD2(qx0, qy1),
+            type: .triangle, color: modulated,
+            radius: 0, stroke: 0, aa: aa, fill: 1,
+            attributes: SIMD4<Float>(la.x, la.y, lb.x, lb.y),
+            uvBounds: SIMD4<Float>(lc.x, lc.y, 0, 0)
+        )
+    }
+
     /// Debug-draw a collision circle as a thin ring. A zero-length stroked capsule is a
     /// ring of the given radius, so it reuses the capsule path (no stroked-circle branch needed).
     public func debug(_ c: Circle, color: Color = Color(r: 0, g: 1, b: 0),
@@ -222,14 +255,15 @@ extension Draw {
         p3: SIMD2<Float>, uv3: SIMD2<Float>,
         type: ShapeType, color: SIMD4<Float>,
         radius: Float, stroke: Float, aa: Float, fill: Float,
-        attributes: SIMD4<Float> = .zero
+        attributes: SIMD4<Float> = .zero,
+        uvBounds: SIMD4<Float> = .zero
     ) {
         // No texture bound for SDF shapes — leave whatever the batcher had.
         // (The fragment shader branches on type so the texture is ignored.)
         func v(_ p: SIMD2<Float>, _ uv: SIMD2<Float>) -> Vertex {
             Vertex(pos: p, uv: uv, color: color,
                    radius: radius, stroke: stroke, aa: aa, type: type.rawValue,
-                   alpha: 1, fill: fill, attributes: attributes)
+                   alpha: 1, fill: fill, attributes: attributes, uvBounds: uvBounds)
         }
         batcher.append(v(p0, uv0))
         batcher.append(v(p1, uv1))

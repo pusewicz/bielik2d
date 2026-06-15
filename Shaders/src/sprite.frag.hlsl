@@ -40,6 +40,20 @@ float sdRoundBox(float2 p, float2 b, float r) {
     return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
 }
 
+// Signed distance to the triangle (a, b, c). Negative inside. (Inigo Quilez.)
+float sdTriangle(float2 p, float2 a, float2 b, float2 c) {
+    float2 e0 = b - a, e1 = c - b, e2 = a - c;
+    float2 v0 = p - a, v1 = p - b, v2 = p - c;
+    float2 pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
+    float2 pq1 = v1 - e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);
+    float2 pq2 = v2 - e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);
+    float s = sign(e0.x * e2.y - e0.y * e2.x);
+    float2 d = min(min(float2(dot(pq0, pq0), s * (v0.x * e0.y - v0.y * e0.x)),
+                       float2(dot(pq1, pq1), s * (v1.x * e1.y - v1.y * e1.x))),
+                       float2(dot(pq2, pq2), s * (v2.x * e2.y - v2.y * e2.x)));
+    return -sqrt(d.x) * sign(d.y);
+}
+
 float4 main(PSInput input) : SV_Target {
     int t = (int)round(input.type);
     // Derivatives are evaluated up front (uniform control flow) so the pixel-art
@@ -126,6 +140,15 @@ float4 main(PSInput input) : SV_Target {
                            input.stroke * 0.5 - input.aa, abs(dist));
         }
         return float4(input.color.rgb, input.color.a * a);
+    }
+    if (t == 5) {
+        // triangle: corners packed scaleData.xy = a, scaleData.zw = b, uvBounds.xy = c.
+        float2 a = input.scaleData.xy;
+        float2 b = input.scaleData.zw;
+        float2 c = input.uvBounds.xy;
+        float dist = sdTriangle(input.uv, a, b, c);
+        float al = smoothstep(input.aa, -input.aa, dist);
+        return float4(input.color.rgb, input.color.a * al);
     }
     // unknown type -> render solid color for visibility
     return input.color;
