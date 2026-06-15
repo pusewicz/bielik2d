@@ -16,6 +16,25 @@ struct SDL3PlatformTests {
         #expect(!platform.shouldQuit)
     }
 
+    @Test func displayScaleChangeEventUpdatesFontAmbientDensity() throws {
+        let platform = try SDL3Platform.start(title: "hidpi ambient", width: 64, height: 64)
+        defer {
+            // Restore ambient density so other tests aren't affected.
+            Font.ambientPixelDensity = platform.pixelDensity
+            platform.stop()
+        }
+        // Set a sentinel so we can detect whether the handler fires.
+        Font.ambientPixelDensity = 99
+        var ev = SDL_Event()
+        ev.type = SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED.rawValue
+        _ = SDL_PushEvent(&ev)
+        platform.pollEvents()
+        // The handler must re-query SDL and push the result to Font.ambientPixelDensity.
+        #expect(Font.ambientPixelDensity == platform.pixelDensity,
+                "handler must sync Font.ambientPixelDensity to the re-queried density")
+        #expect(Font.ambientPixelDensity != 99, "handler must have overwritten the sentinel")
+    }
+
     @Test func hiDPIInvariantsHold() throws {
         let platform = try SDL3Platform.start(title: "hidpi invariants", width: 320, height: 200)
         defer { platform.stop() }

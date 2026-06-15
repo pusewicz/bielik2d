@@ -50,6 +50,11 @@ public final class SDL3Platform {
             switch SDL_EventType(rawValue: ev.type) {
             case SDL_EVENT_QUIT, SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                 shouldQuit = true
+            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED, SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+                refreshPixelMetrics()
+                // Already-open fonts keep their rasterization; new Font() calls
+                // will use the updated density automatically.
+                Font.ambientPixelDensity = pixelDensity
             case SDL_EVENT_KEY_DOWN:
                 if !ev.key.repeat, let key = Key(scancode: ev.key.scancode) {
                     input.keyboard.press(key)
@@ -114,6 +119,20 @@ public final class SDL3Platform {
         case SDL_BUTTON_X2: .x2
         default: nil
         }
+    }
+
+    /// Re-queries SDL for the current logical size, pixel size, and pixel density
+    /// and writes them into the stored properties. Call on display-scale change events.
+    private func refreshPixelMetrics() {
+        guard let win = windowHandle else { return }
+        var lw: Int32 = 0, lh: Int32 = 0
+        SDL_GetWindowSize(win, &lw, &lh)
+        var pw: Int32 = 0, ph: Int32 = 0
+        SDL_GetWindowSizeInPixels(win, &pw, &ph)
+        let density = SDL_GetWindowPixelDensity(win)
+        size = SIMD2(Int(lw), Int(lh))
+        sizeInPixels = SIMD2(Int(pw), Int(ph))
+        pixelDensity = density > 0 ? density : 1.0
     }
 
     public func stop() {
