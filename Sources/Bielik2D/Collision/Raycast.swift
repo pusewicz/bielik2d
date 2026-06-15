@@ -75,3 +75,29 @@ extension Ray {
         return Raycast(t: t, point: origin + direction * t, normal: sideNormal)
     }
 }
+
+extension Ray {
+    /// Ray vs a convex polygon: the nearest edge crossing within `length`. The hit normal faces
+    /// back toward the ray origin. Winding-agnostic (works for CW or CCW vertices).
+    public func cast(against poly: Polygon) -> Raycast? {
+        let vs = poly.vertices
+        guard vs.count >= 2 else { return nil }
+        var best: Raycast? = nil
+        for i in 0..<vs.count {
+            let p0 = vs[i], p1 = vs[(i + 1) % vs.count]
+            let e = p1 - p0
+            let denom = direction.x * e.y - direction.y * e.x   // cross(direction, e)
+            if abs(denom) < 1e-8 { continue }                   // parallel to this edge
+            let diff = p0 - origin
+            let t = (diff.x * e.y - diff.y * e.x) / denom        // distance along the ray
+            let u = (diff.x * direction.y - diff.y * direction.x) / denom  // param along edge
+            if t < 0 || t > length || u < 0 || u > 1 { continue }
+            var n = simd_normalize(SIMD2(e.y, -e.x))
+            if simd_dot(n, direction) > 0 { n = -n }             // face back toward origin
+            if best == nil || t < best!.t {
+                best = Raycast(t: t, point: origin + direction * t, normal: n)
+            }
+        }
+        return best
+    }
+}
