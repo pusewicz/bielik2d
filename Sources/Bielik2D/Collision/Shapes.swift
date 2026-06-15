@@ -64,3 +64,26 @@ public struct Ray: Equatable, Sendable {
         self.length = length
     }
 }
+
+/// A convex polygon with counter-clockwise, world-space vertices. `init(vertices:)` is the raw,
+/// unvalidated form (caller guarantees convex + CCW); `init(hull:)` builds a valid CCW hull from
+/// arbitrary points. GJK/EPA queries assume CCW winding.
+public struct Polygon: CollisionShape, Equatable, Sendable {
+    public var vertices: [SIMD2<Float>]
+    public init(vertices: [SIMD2<Float>]) {
+        self.vertices = vertices
+    }
+}
+
+/// A half-plane: `normal` is the outward unit normal and the boundary line passes through `point`.
+/// The **solid** side is `-normal` (e.g. a wall whose normal faces the play area). A shape overlaps
+/// the half-space when it crosses the boundary onto the solid side.
+public struct Halfspace: CollisionShape, Equatable, Sendable {
+    public var point: SIMD2<Float>
+    public var normal: SIMD2<Float>
+    public init(point: SIMD2<Float>, normal: SIMD2<Float>) {
+        self.point = point
+        let len = simd_length(normal)
+        self.normal = len > 1e-12 ? normal / len : SIMD2(0, 1)
+    }
+}
