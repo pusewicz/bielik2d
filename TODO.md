@@ -211,7 +211,7 @@ Pitch, gain, stereo pan, and fades are native to the track API — no custom DSP
 ## Phase 18 — Collision: 2D shapes + queries 🟡
 
 The gameplay enabler and a signature CF feature; pure math, zero GPU — ideal TDD, reuses
-`Sources/Bielik2D/Math/` (`Mat3x2`, `SIMD2`, `Rect`). Core + GJK/EPA shipped; only swept TOI remains.
+`Sources/Bielik2D/Math/` (`Mat3x2`, `SIMD2`, `Rect`). Core + GJK/EPA + swept TOI shipped.
 
 - [x] `Sources/Bielik2D/Collision/` — `Circle`, `AABB` (min/max + `Rect` bridge), `Capsule`, `Ray`,
       `Polygon` (+ convex-hull builder), `Halfspace`.
@@ -219,7 +219,7 @@ The gameplay enabler and a signature CF feature; pure math, zero GPU — ideal T
       (direction normalized at `Ray` init), protocol-oriented across all shape pairs.
 - [x] `gjk` distance/closest-points + EPA penetration for `Polygon` pairs; `distance(to:)` query;
       convex-hull builder; `Polygon`/`Halfspace` shapes.
-- [ ] swept `toi` for continuous collision (deferred follow-up).
+- [x] swept `toi` for continuous collision via GJK conservative advancement; `move`-and-slide helper.
 - [x] Debug-draw shapes via `Draw.debug(_:)` (capsule SDF pulled forward from Phase 19).
 - [x] Predicates tested against hand-computed expected results.
 

@@ -23,7 +23,7 @@ These are the modules where Bielik2D and CF actually compete — the engine surf
 | **audio** | ✅ | `Sound`/`Music`/`Voice` over SDL3_mixer; gain, stereo pan, dynamic pitch, fades, `crossfade(to:over:)`, master volume, ambient `Audio.current`. **Deferred:** voice pause/resume, category buses, 3D positional. |
 | **input** | 🟡 | Keyboard (`down`/`pressed`/`released` + modifiers), mouse (position via camera, buttons, wheel), gamepad (buttons, analog sticks, triggers, hot-plug), via `app.input`. **Missing:** `binding` action map. |
 | **binding** | ⏳ | Action map ("jump" → key OR button). Follow-up to Phase 16. |
-| **collision** | 🟡 | `Circle`/`AABB`/`Capsule`/`Polygon`/`Halfspace`/`Ray` with protocol-oriented `overlaps`/`manifold(with:)`/`distance(to:)`/`cast(against:)` across all pairs; closed-form primitives + GJK/EPA for polygon pairs; convex-hull builder; `Draw.debug(_:)` shapes (Phase 18). **Missing:** swept time-of-impact (deferred follow-up). |
+| **collision** | 🟡 | `Circle`/`AABB`/`Capsule`/`Polygon`/`Halfspace`/`Ray` with protocol-oriented `overlaps`/`manifold(with:)`/`distance(to:)`/`cast(against:)` across all pairs; closed-form primitives + GJK/EPA for polygon pairs; convex-hull builder; continuous swept TOI (`sweep`) + `move`-and-slide resolve via GJK conservative advancement; `Draw.debug(_:)` shapes (Phase 18). |
 | **math** | 🟡 | `Mat3x2`, `Rect`, SIMD2 via simd/kvSIMD; easing functions now ship in the `coroutine`/Flow module (Phase 20). **Missing:** geometry helpers that land with collision (Phase 18). |
 | **time** | ✅ | `Clock` (perf-counter delta) + `FrameTimer` (windowed avg/fps/max). |
 | **text** | 🟡 | `Font`, `TextEngine`, `Draw.text`, cached `Label` over SDL3_ttf + `TTF_GPUTextEngine`; HiDPI-crisp (native-density rasterization). **Missing:** color markup, outline, shadow (Phase 19). |
@@ -61,12 +61,10 @@ missing for shipping an actual game is **gameplay**: collision and richer draw p
 
 ## What to build next
 
-Collision's focused core (Phase 18), coroutines/tweening (Phase 20), and Phase 19's shape
-primitives have shipped; the remaining top gaps:
+Collision (Phase 18, now including continuous swept TOI + move-and-slide), coroutines/tweening
+(Phase 20), and Phase 19's shape primitives have shipped; the remaining top gap:
 
 1. **Draw completeness (Phase 19, remaining slices)** — the shape primitives landed (outline
    `circle`, `tri`, `polyline`, `poly` outline, `boxFill`, `pushShapeAA`); still to do are the
    draw-state stacks (`pushScissor`/`pushViewport`/`pushBlendState`) and text effects (color
    markup, outline, shadow), plus filled convex `poly`.
-2. **Collision follow-up** — swept time-of-impact for continuous (tunnel-proof) collision, on top
-   of the GJK/EPA core now in place.
