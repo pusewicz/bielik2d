@@ -153,6 +153,19 @@ while app.isRunning {
     draw.line(from: SIMD2(210, 110), to: SIMD2(360, 190),
               thickness: 8, color: Color(r: 1.0, g: 0.9, b: 0.3))
 
+    // Collision showcase: a static box obstacle, and a dot driven toward it that gets
+    // pushed back out along the manifold normal so it never penetrates.
+    let obstacle = AABB(min: SIMD2(200, 250), max: SIMD2(320, 330))
+    draw.debug(obstacle, color: Color(r: 0.4, g: 1.0, b: 0.5))
+    draw.capsule(from: SIMD2(360, 250), to: SIMD2(460, 330), radius: 16,
+                 color: Color(r: 0.7, g: 0.5, b: 1.0))
+    var probe = Circle(center: SIMD2(260 + sin(t) * 120, 290), radius: 18)
+    if let m = obstacle.manifold(with: probe) {
+        probe.center += m.normal * m.depth        // resolve out of the box
+    }
+    draw.circleFill(center: probe.center, radius: probe.radius,
+                    color: Color(r: 1.0, g: 0.85, b: 0.2))
+
     // The looping animation: advance playback, then draw it with the sprite's own
     // `draw(at:)` sugar (queues into the ambient Draw).
     blinker.update(dt)

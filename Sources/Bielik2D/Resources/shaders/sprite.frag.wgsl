@@ -106,5 +106,20 @@ fn main(in: FragInput) -> @location(0) vec4<f32> {
         }
         return vec4<f32>(in.color.rgb, in.color.a * a);
     }
+    if (t == 4) {
+        // Capsule: segment along local x in [-halfLen, halfLen], rounded by `radius`.
+        // uv is in capsule-local world coords; scaleData.x = halfLen.
+        let halfLen = in.scaleData.x;
+        let dx = abs(in.uv.x) - halfLen;
+        let dist = length(vec2<f32>(max(dx, 0.0), in.uv.y)) - in.radius;
+        var a: f32;
+        if (in.fill > 0.5) {
+            a = smoothstep(in.aa, -in.aa, dist);
+        } else {
+            let halfStroke = in.stroke * 0.5;
+            a = smoothstep(halfStroke + in.aa, halfStroke - in.aa, abs(dist));
+        }
+        return vec4<f32>(in.color.rgb, in.color.a * a);
+    }
     return in.color;
 }

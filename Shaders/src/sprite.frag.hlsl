@@ -104,6 +104,21 @@ float4 main(PSInput input) : SV_Target {
         }
         return float4(input.color.rgb, input.color.a * a);
     }
+    if (t == 4) {
+        // Capsule: segment along local x in [-halfLen, halfLen], rounded by `radius`.
+        // uv is in capsule-local world coords; scaleData.x = halfLen.
+        float halfLen = input.scaleData.x;
+        float dx = abs(input.uv.x) - halfLen;
+        float dist = length(float2(max(dx, 0.0), input.uv.y)) - input.radius;
+        float a;
+        if (input.fill > 0.5) {
+            a = smoothstep(input.aa, -input.aa, dist);
+        } else {
+            a = smoothstep(input.stroke * 0.5 + input.aa,
+                           input.stroke * 0.5 - input.aa, abs(dist));
+        }
+        return float4(input.color.rgb, input.color.a * a);
+    }
     // unknown type -> render solid color for visibility
     return input.color;
 }

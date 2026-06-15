@@ -12,6 +12,7 @@ public enum ShapeType: Float {
     case circle = 1
     case line = 2
     case box = 3
+    case capsule = 4
 }
 
 extension Draw {
@@ -94,6 +95,63 @@ extension Draw {
             radius: 0, stroke: thickness, aa: aa, fill: 0,
             attributes: SIMD4<Float>(halfLen, 0, 0, 0)
         )
+    }
+
+    /// Filled or outlined capsule: a segment `a`→`b` with rounded ends of `radius`.
+    /// `stroke` 0 fills; `> 0` draws an outline of that thickness centred on the boundary.
+    public func capsule(from a: SIMD2<Float>, to b: SIMD2<Float>, radius: Float,
+                        stroke: Float = 0, color: Color = .white,
+                        aa: Float = 1.5 / Draw.ambientPixelDensity) {
+        let dir = b - a
+        let len = simd_length(dir)
+        let d = len > 1e-6 ? dir / len : SIMD2<Float>(1, 0)
+        let n = SIMD2<Float>(-d.y, d.x)
+        let halfLen = len * 0.5
+        // Round caps reach `radius` past each endpoint; add `aa` for the fade and the
+        // stroke half-width that spills outside the boundary when stroked.
+        let pad = radius + (stroke > 0 ? stroke * 0.5 : 0) + aa
+        let halfBand = pad
+        let tint = currentColor
+        let modulated = SIMD4<Float>(color.r * tint.r, color.g * tint.g,
+                                     color.b * tint.b, color.a * tint.a)
+        let t = currentTransform
+        let mid = (a + b) * 0.5
+        let tp0 = t.transform(mid - d * (halfLen + pad) + n * halfBand)
+        let tp1 = t.transform(mid + d * (halfLen + pad) + n * halfBand)
+        let tp2 = t.transform(mid + d * (halfLen + pad) - n * halfBand)
+        let tp3 = t.transform(mid - d * (halfLen + pad) - n * halfBand)
+        let uvTL = SIMD2<Float>(-(halfLen + pad),  halfBand)
+        let uvTR = SIMD2<Float>( (halfLen + pad),  halfBand)
+        let uvBR = SIMD2<Float>( (halfLen + pad), -halfBand)
+        let uvBL = SIMD2<Float>(-(halfLen + pad), -halfBand)
+        emitSDFQuadCorners(
+            p0: tp0, uv0: uvTL,
+            p1: tp1, uv1: uvTR,
+            p2: tp2, uv2: uvBR,
+            p3: tp3, uv3: uvBL,
+            type: .capsule, color: modulated,
+            radius: radius, stroke: stroke, aa: aa, fill: stroke <= 0 ? 1 : 0,
+            attributes: SIMD4<Float>(halfLen, 0, 0, 0)
+        )
+    }
+
+    /// Debug-draw a collision circle as a thin ring. A zero-length stroked capsule is a
+    /// ring of the given radius, so it reuses the capsule path (no stroked-circle branch needed).
+    public func debug(_ c: Circle, color: Color = Color(r: 0, g: 1, b: 0),
+                      stroke: Float = 1) {
+        capsule(from: c.center, to: c.center, radius: c.radius, stroke: stroke, color: color)
+    }
+
+    /// Debug-draw a collision AABB as a thin box outline.
+    public func debug(_ b: AABB, color: Color = Color(r: 0, g: 1, b: 0),
+                      stroke: Float = 1) {
+        box(b.rect, stroke: stroke, color: color)
+    }
+
+    /// Debug-draw a collision capsule as a thin outline.
+    public func debug(_ cap: Capsule, color: Color = Color(r: 0, g: 1, b: 0),
+                      stroke: Float = 1) {
+        capsule(from: cap.a, to: cap.b, radius: cap.radius, stroke: stroke, color: color)
     }
 
     // MARK: - Internal SDF emission helpers
