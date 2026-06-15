@@ -48,17 +48,17 @@ extension Draw {
             TTF_CreateText(engine.handle, font.handle, cstr, string.utf8.count)
         }) else { return }
         defer { TTF_DestroyText(textHandle) }
-        emitTextSequence(handle: textHandle, at: origin, color: color)
+        emitTextSequence(handle: textHandle, at: origin, color: color, scale: font.renderScale)
     }
 
     /// Renders a cached label. Glyph layout was set up at `Label.setString` time,
     /// so this path skips the create/destroy cost of the one-shot overload.
     public func text(_ label: Label, at origin: SIMD2<Float>, color: Color = .white) {
         guard textEngine is TextEngine else { return }
-        emitTextSequence(handle: label.handle, at: origin, color: color)
+        emitTextSequence(handle: label.handle, at: origin, color: color, scale: label.font.renderScale)
     }
 
-    private func emitTextSequence(handle: UnsafeMutablePointer<TTF_Text>, at origin: SIMD2<Float>, color: Color) {
+    private func emitTextSequence(handle: UnsafeMutablePointer<TTF_Text>, at origin: SIMD2<Float>, color: Color, scale: Float = 1) {
         guard var seq = TTF_GetGPUTextDrawData(handle) else { return }
 
         let t = currentTransform
@@ -85,7 +85,9 @@ extension Draw {
                 // "In the GPU API positive y-axis is upwards so the signs of the y-coords is reversed").
                 // Our world is +Y down, so flip y back. Origin then corresponds to the
                 // text's top-left rather than its baseline.
-                let world = t.transform(SIMD2(origin.x + local.x, origin.y - local.y))
+                // `scale` (= 1/pixelDensity) converts the oversized atlas coords back
+                // to logical point size so HiDPI fonts occupy the same screen area as 1×.
+                let world = t.transform(SIMD2(origin.x + local.x * scale, origin.y - local.y * scale))
                 let v = Vertex(
                     pos: world,
                     uv: SIMD2(uv![idx].x, uv![idx].y),
