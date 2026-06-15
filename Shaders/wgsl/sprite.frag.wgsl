@@ -81,7 +81,13 @@ fn main(in: FragInput) -> @location(0) vec4<f32> {
     }
     if (t == 1) {
         let d = length(in.uv);
-        let a = smoothstep(in.radius + in.aa, in.radius - in.aa, d);
+        var a: f32;
+        if (in.fill > 0.5) {
+            a = smoothstep(in.radius + in.aa, in.radius - in.aa, d);
+        } else {
+            let halfStroke = in.stroke * 0.5;
+            a = smoothstep(halfStroke + in.aa, halfStroke - in.aa, abs(d - in.radius));
+        }
         return vec4<f32>(in.color.rgb, in.color.a * a);
     }
     if (t == 2) {

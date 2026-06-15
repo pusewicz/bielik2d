@@ -58,6 +58,18 @@ import Testing
     #expect(ys.max()! >= 60.0 + 2.0 - 0.01)
 }
 
+@Test func circleOutlineEmitsStrokedCircleParams() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.circle(center: SIMD2<Float>(50, 50), radius: 20, thickness: 4, color: .white)
+    #expect(b.vertices.count == 6)
+    let v = b.vertices.first!
+    #expect(v.type == ShapeType.circle.rawValue)
+    #expect(v.fill == 0)
+    #expect(v.stroke == 4)
+    #expect(v.radius == 20)
+}
+
 @Test func lineEmitsQuadAlignedToSegment() {
     let b = Batcher()
     let d = Draw(batcher: b)

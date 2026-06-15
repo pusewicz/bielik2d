@@ -75,9 +75,17 @@ float4 main(PSInput input) : SV_Target {
         return tex * input.color;
     }
     if (t == 1) {
-        // circle: distance from uv origin in local-extent units
+        // circle: distance from uv origin in local-extent units.
         float d = length(input.uv);
-        float a = smoothstep(input.radius + input.aa, input.radius - input.aa, d);
+        float a;
+        if (input.fill > 0.5) {
+            // filled disk: opaque inside, AA at the outer edge
+            a = smoothstep(input.radius + input.aa, input.radius - input.aa, d);
+        } else {
+            // outline: opaque band of `stroke` width centred on the radius
+            a = smoothstep(input.stroke * 0.5 + input.aa,
+                           input.stroke * 0.5 - input.aa, abs(d - input.radius));
+        }
         return float4(input.color.rgb, input.color.a * a);
     }
     if (t == 2) {

@@ -27,6 +27,19 @@ extension Draw {
                     localExtent: extent, radius: radius, stroke: 0, aa: aa, fill: 1)
     }
 
+    /// Antialiased circle outline of the given `thickness`, centred on the radius.
+    public func circle(center: SIMD2<Float>, radius: Float, thickness: Float,
+                       color: Color = .white, aa: Float? = nil) {
+        let aa = aa ?? currentShapeAA
+        // Quad must reach the outer edge of the stroke plus the AA fringe.
+        let pad = thickness * 0.5 + aa
+        let extent = radius + pad
+        let bounds = Rect(x: center.x - extent, y: center.y - extent,
+                          width: 2 * extent, height: 2 * extent)
+        emitSDFQuad(type: .circle, bounds: bounds, color: color,
+                    localExtent: extent, radius: radius, stroke: thickness, aa: aa, fill: 0)
+    }
+
     /// Filled or outlined box. `stroke` 0 means filled; >0 means an outline of that
     /// thickness centred on the rect boundary. `cornerRadius` 0 means sharp corners.
     public func box(_ rect: Rect, stroke: Float = 0, cornerRadius: Float = 0,
