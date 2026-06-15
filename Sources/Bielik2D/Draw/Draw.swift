@@ -20,6 +20,11 @@ public final class Draw {
     /// `Renderer.current`; pass an explicit `Draw` via `draw.sprite(_:at:)` otherwise.
     public static nonisolated(unsafe) var current: Draw?
 
+    /// Current display pixel density (pixels per logical point). `App` keeps this in
+    /// sync with the window's display so that SDF primitives whose `aa` defaults to
+    /// `1.5 / ambientPixelDensity` always produce a ~1.5-screen-pixel AA band.
+    public static nonisolated(unsafe) var ambientPixelDensity: Float = 1.0
+
     public init(textEngine: Any? = nil) {
         self.batcher = Batcher()
         self.textEngine = textEngine

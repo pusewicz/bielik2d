@@ -53,8 +53,9 @@ public final class SDL3Platform {
             case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED, SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
                 refreshPixelMetrics()
                 // Already-open fonts keep their rasterization; new Font() calls
-                // will use the updated density automatically.
+                // and subsequent Draw SDF calls use the updated density.
                 Font.ambientPixelDensity = pixelDensity
+                Draw.ambientPixelDensity = pixelDensity
             case SDL_EVENT_KEY_DOWN:
                 if !ev.key.repeat, let key = Key(scancode: ev.key.scancode) {
                     input.keyboard.press(key)

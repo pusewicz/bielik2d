@@ -16,7 +16,7 @@ public enum ShapeType: Float {
 
 extension Draw {
     /// Filled circle in world space, with antialiased edge.
-    public func circleFill(center: SIMD2<Float>, radius: Float, color: Color = .white, aa: Float = 1.5) {
+    public func circleFill(center: SIMD2<Float>, radius: Float, color: Color = .white, aa: Float = 1.5 / Draw.ambientPixelDensity) {
         // Slightly larger quad to give AA room.
         let pad = aa
         let extent = radius + pad
@@ -25,17 +25,44 @@ extension Draw {
                     localExtent: extent, radius: radius, stroke: 0, aa: aa, fill: 1)
     }
 
-    /// Outline (or rounded) box. `stroke` 0 means filled. `corner` 0 means sharp.
+    /// Filled or outlined box. `stroke` 0 means filled; >0 means an outline of that
+    /// thickness centred on the rect boundary. `cornerRadius` 0 means sharp corners.
     public func box(_ rect: Rect, stroke: Float = 0, cornerRadius: Float = 0,
-                    color: Color = .white, aa: Float = 1.5) {
-        emitSDFQuad(type: .box, bounds: rect, color: color,
-                    localExtent: max(rect.width, rect.height) / 2,
-                    radius: cornerRadius, stroke: stroke, aa: aa, fill: stroke <= 0 ? 1 : 0)
+                    color: Color = .white, aa: Float = 1.5 / Draw.ambientPixelDensity) {
+        let halfW = rect.width / 2
+        let halfH = rect.height / 2
+        // Extend the quad so there is room for the AA fringe (and for the stroke
+        // half-width that falls outside the rect boundary when stroke > 0).
+        let pad = (stroke > 0 ? stroke / 2 : 0) + aa
+        let tint = currentColor
+        let modulated = SIMD4<Float>(color.r * tint.r, color.g * tint.g,
+                                     color.b * tint.b, color.a * tint.a)
+        let t = currentTransform
+        let p0 = t.transform(SIMD2(rect.minX - pad, rect.minY - pad))
+        let p1 = t.transform(SIMD2(rect.maxX + pad, rect.minY - pad))
+        let p2 = t.transform(SIMD2(rect.maxX + pad, rect.maxY + pad))
+        let p3 = t.transform(SIMD2(rect.minX - pad, rect.maxY + pad))
+        // UVs are box-local coordinates centred at the rect's centre (in world units).
+        // uv.x ∈ [−(halfW+pad), +(halfW+pad)] maps 1:1 to the local x axis, so the
+        // fragment shader receives the exact local position for the box SDF.
+        let uv0 = SIMD2<Float>(-(halfW + pad), -(halfH + pad))
+        let uv1 = SIMD2<Float>( (halfW + pad), -(halfH + pad))
+        let uv2 = SIMD2<Float>( (halfW + pad),  (halfH + pad))
+        let uv3 = SIMD2<Float>(-(halfW + pad),  (halfH + pad))
+        // Pass the box half-extents via attributes.xy so the fragment shader can
+        // evaluate sdBox(uv, halfExtents) without knowing the quad dimensions.
+        emitSDFQuadCorners(
+            p0: p0, uv0: uv0, p1: p1, uv1: uv1,
+            p2: p2, uv2: uv2, p3: p3, uv3: uv3,
+            type: .box, color: modulated,
+            radius: cornerRadius, stroke: stroke, aa: aa, fill: stroke <= 0 ? 1 : 0,
+            attributes: SIMD4<Float>(halfW, halfH, 0, 0)
+        )
     }
 
     /// Anti-aliased line segment with a given thickness.
     public func line(from a: SIMD2<Float>, to b: SIMD2<Float>, thickness: Float,
-                     color: Color = .white, aa: Float = 1.5) {
+                     color: Color = .white, aa: Float = 1.5 / Draw.ambientPixelDensity) {
         // Build a rotated bounding quad around the segment.
         let dir = b - a
         let len = simd_length(dir)
@@ -100,14 +127,15 @@ extension Draw {
         p2: SIMD2<Float>, uv2: SIMD2<Float>,
         p3: SIMD2<Float>, uv3: SIMD2<Float>,
         type: ShapeType, color: SIMD4<Float>,
-        radius: Float, stroke: Float, aa: Float, fill: Float
+        radius: Float, stroke: Float, aa: Float, fill: Float,
+        attributes: SIMD4<Float> = .zero
     ) {
         // No texture bound for SDF shapes — leave whatever the batcher had.
         // (The fragment shader branches on type so the texture is ignored.)
         func v(_ p: SIMD2<Float>, _ uv: SIMD2<Float>) -> Vertex {
             Vertex(pos: p, uv: uv, color: color,
                    radius: radius, stroke: stroke, aa: aa, type: type.rawValue,
-                   alpha: 1, fill: fill)
+                   alpha: 1, fill: fill, attributes: attributes)
         }
         batcher.append(v(p0, uv0))
         batcher.append(v(p1, uv1))

@@ -27,6 +27,37 @@ import Testing
     #expect(abs(maxY - 130) < 2)
 }
 
+@Test func circleFillAAScalesWithPixelDensity() {
+    let saved = Draw.ambientPixelDensity
+    defer { Draw.ambientPixelDensity = saved }
+    Draw.ambientPixelDensity = 2.0
+    let b = Batcher()
+    Draw(batcher: b).circleFill(center: .zero, radius: 30)
+    // Default aa should be 1.5 / density = 0.75 at 2× density.
+    #expect(abs(b.vertices.first!.aa - 0.75) < 0.01)
+}
+
+@Test func boxEmitsVerticesWithBoxTypeAndHalfExtents() {
+    let b = Batcher()
+    Draw(batcher: b).box(Rect(x: 10, y: 20, width: 100, height: 80))
+    #expect(b.vertices.count == 6)
+    let v = b.vertices.first!
+    #expect(v.type == ShapeType.box.rawValue)
+    #expect(v.attributes.x == 50)  // halfW = 100/2
+    #expect(v.attributes.y == 40)  // halfH = 80/2
+}
+
+@Test func boxQuadExpandedBeyondRectByAA() {
+    let b = Batcher()
+    Draw(batcher: b).box(Rect(x: 0, y: 0, width: 100, height: 60), aa: 2.0)
+    let xs = b.vertices.map(\.pos.x)
+    let ys = b.vertices.map(\.pos.y)
+    #expect(xs.min()! <= -2.0 + 0.01)   // ≤ rect.x − aa
+    #expect(xs.max()! >= 100.0 + 2.0 - 0.01) // ≥ rect.maxX + aa
+    #expect(ys.min()! <= -2.0 + 0.01)
+    #expect(ys.max()! >= 60.0 + 2.0 - 0.01)
+}
+
 @Test func lineEmitsQuadAlignedToSegment() {
     let b = Batcher()
     let d = Draw(batcher: b)

@@ -46,9 +46,9 @@ public final class App {
             throw error
         }
         self.platform = plat
-        // Seed the ambient font density so bare `Font(path:ptSize:)` calls
-        // automatically rasterize at native resolution for this display.
+        // Seed ambient densities so bare Font/Draw calls use native resolution.
         Font.ambientPixelDensity = plat.pixelDensity
+        Draw.ambientPixelDensity = plat.pixelDensity
         // Make this the ambient renderer so bare `Sprite(path:)` and `sprite.update`
         // resolve against it. Last app created wins.
         Renderer.current = renderer
