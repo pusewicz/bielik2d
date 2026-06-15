@@ -103,3 +103,22 @@ import kvSIMD
     let floor = Halfspace(point: SIMD2(0, 0), normal: SIMD2(0, 1))
     #expect(mover.sweep(by: SIMD2(0, 10), against: floor) == nil)   // moving away
 }
+
+@Test func sweepZeroDeltaMisses() {
+    let mover = Circle(center: SIMD2(0, 0), radius: 1)
+    #expect(mover.sweep(by: .zero, against: Circle(center: SIMD2(20, 0), radius: 1)) == nil)
+}
+
+@Test func sweepAlreadyOverlappingReportsImpactAtZero() {
+    // Cores already interpenetrating at t=0: report immediate contact.
+    let mover = Circle(center: SIMD2(0, 0), radius: 2)
+    let hit = mover.sweep(by: SIMD2(5, 0), against: Circle(center: SIMD2(1, 0), radius: 2))
+    #expect(hit != nil)
+    #expect(abs(hit!.t) < 1e-3)
+}
+
+@Test func sweepCircleApproachingButTooShortMisses() {
+    // Gap 18 but the sweep only covers 5 -> never reaches contact.
+    let mover = Circle(center: SIMD2(0, 0), radius: 1)
+    #expect(mover.sweep(by: SIMD2(5, 0), against: Circle(center: SIMD2(20, 0), radius: 1)) == nil)
+}
