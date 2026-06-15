@@ -1,8 +1,8 @@
 // Branches on input.type:
 //   0 -> sprite: sample texture * color
-//   1 -> circle fill: SDF disk in uv space, radius in local-extent units
+//   1 -> circle fill: SDF disk, uv is box-local position, radius is circle radius
 //   2 -> line: uv.y is signed-distance across the segment, [-1..+1]
-//   3 -> box: reserved
+//   3 -> box: SDF rounded rect; uv is box-local position, scaleData.xy = (halfW, halfH)
 // SDF anti-aliasing uses a soft edge of width `aa` (in the same units as uv).
 
 struct PSInput {
@@ -31,6 +31,13 @@ float2 GetPixelArtUV(float2 uv, float2 texSize, float2 uvDdx, float2 uvDdy) {
     float2 tx = uv * texSize - 0.5 * boxSize;
     float2 txOffset = smoothstep(1.0 - boxSize, float2(1.0, 1.0), frac(tx));
     return (floor(tx) + 0.5 + txOffset) / texSize;
+}
+
+// Signed distance to a rounded rectangle centred at the origin with half-extents
+// `b` and corner radius `r`. Negative inside, zero on the boundary, positive outside.
+float sdRoundBox(float2 p, float2 b, float r) {
+    float2 d = abs(p) - b + r;
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
 }
 
 float4 main(PSInput input) : SV_Target {
@@ -80,6 +87,21 @@ float4 main(PSInput input) : SV_Target {
         float d = abs(input.uv.y) * halfBand;       // 0 at centerline, halfBand at outer edge
         float core = input.stroke * 0.5;
         float a = smoothstep(core + input.aa, core - input.aa, d);
+        return float4(input.color.rgb, input.color.a * a);
+    }
+    if (t == 3) {
+        // box: scaleData.xy carries (halfW, halfH) passed via Vertex.attributes.
+        float2 halfExtents = input.scaleData.xy;
+        float dist = sdRoundBox(input.uv, halfExtents, input.radius);
+        float a;
+        if (input.fill > 0.5) {
+            // filled: opaque inside, AA at outer edge
+            a = smoothstep(input.aa, -input.aa, dist);
+        } else {
+            // stroked: opaque at |dist| < stroke/2, AA on both inner and outer edges
+            a = smoothstep(input.stroke * 0.5 + input.aa,
+                           input.stroke * 0.5 - input.aa, abs(dist));
+        }
         return float4(input.color.rgb, input.color.a * a);
     }
     // unknown type -> render solid color for visibility

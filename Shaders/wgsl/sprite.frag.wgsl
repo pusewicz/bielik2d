@@ -3,6 +3,12 @@
 // convention puts texture and sampler at the same WGSL binding index, which
 // WebGPU forbids. We split them into distinct bindings here while keeping
 // behaviour identical to the HLSL source.
+//
+// type branches:
+//   0 -> sprite
+//   1 -> circle SDF
+//   2 -> line SDF
+//   3 -> box SDF (scaleData.xy = halfW, halfH)
 
 struct FragInput {
     @builtin(position) position: vec4<f32>,
@@ -19,6 +25,12 @@ struct FragInput {
 
 @group(1) @binding(0) var mainTex: texture_2d<f32>;
 @group(1) @binding(1) var mainSampler: sampler;
+
+// Signed distance to a rounded rectangle centred at origin with half-extents b and corner radius r.
+fn sdRoundBox(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
+    let d = abs(p) - b + r;
+    return length(max(d, vec2<f32>(0.0))) + min(max(d.x, d.y), 0.0) - r;
+}
 
 // SDL_SCALEMODE_PIXELART, matching sprite.frag.hlsl GetPixelArtUV.
 fn getPixelArtUV(uv: vec2<f32>, texSize: vec2<f32>, uvDdx: vec2<f32>, uvDdy: vec2<f32>) -> vec2<f32> {
@@ -77,6 +89,19 @@ fn main(in: FragInput) -> @location(0) vec4<f32> {
         let d = abs(in.uv.y) * half_band;
         let core = in.stroke * 0.5;
         let a = smoothstep(core + in.aa, core - in.aa, d);
+        return vec4<f32>(in.color.rgb, in.color.a * a);
+    }
+    if (t == 3) {
+        // scaleData.xy = (halfW, halfH) passed via Vertex.attributes
+        let halfExtents = in.scaleData.xy;
+        let dist = sdRoundBox(in.uv, halfExtents, in.radius);
+        var a: f32;
+        if (in.fill > 0.5) {
+            a = smoothstep(in.aa, -in.aa, dist);
+        } else {
+            let halfStroke = in.stroke * 0.5;
+            a = smoothstep(halfStroke + in.aa, halfStroke - in.aa, abs(dist));
+        }
         return vec4<f32>(in.color.rgb, in.color.a * a);
     }
     return in.color;
