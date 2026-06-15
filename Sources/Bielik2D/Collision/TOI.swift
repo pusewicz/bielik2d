@@ -66,15 +66,20 @@ func sweptTOIHalfspace(mover: Support, plane: Halfspace, relDelta: SIMD2<Float>)
     let extent = mover.support(-n)                          // nearest core point toward the plane
     let gap = simd_dot(extent - plane.point, n) - mover.radius
     let closing = -simd_dot(relDelta, n)                    // >0 means moving toward the solid side
+    // Project a contact point onto the plane surface if it landed behind it (already-penetrating case).
+    func onPlane(_ p: SIMD2<Float>) -> SIMD2<Float> {
+        let d = simd_dot(p - plane.point, n)
+        return d < 0 ? p - n * d : p
+    }
     if closing <= 1e-8 {                                    // parallel or receding
         guard gap <= tol else { return nil }
-        return ToI(t: 0, point: extent - n * mover.radius, normal: n)
+        return ToI(t: 0, point: onPlane(extent - n * mover.radius), normal: n)
     }
     let t = gap / closing
     if t > 1 { return nil }
     let tt = max(t, 0)
     let contactExtent = extent + relDelta * tt
-    return ToI(t: tt, point: contactExtent - n * mover.radius, normal: n)
+    return ToI(t: tt, point: onPlane(contactExtent - n * mover.radius), normal: n)
 }
 
 /// Sweep a convex `mover` (already reduced to its `Support`) by `delta` against any collider,
@@ -108,6 +113,7 @@ extension Circle {
 }
 
 extension AABB {
+    /// Swept time-of-impact against any collider. `ToI.t` is the fraction of `delta` at first contact.
     public func sweep(by delta: SIMD2<Float>, against target: CollisionShape,
                       movedBy targetDelta: SIMD2<Float> = .zero) -> ToI? {
         sweepConvex(support, by: delta, movedBy: targetDelta, against: target)
@@ -115,6 +121,7 @@ extension AABB {
 }
 
 extension Capsule {
+    /// Swept time-of-impact against any collider. `ToI.t` is the fraction of `delta` at first contact.
     public func sweep(by delta: SIMD2<Float>, against target: CollisionShape,
                       movedBy targetDelta: SIMD2<Float> = .zero) -> ToI? {
         sweepConvex(support, by: delta, movedBy: targetDelta, against: target)
@@ -122,6 +129,7 @@ extension Capsule {
 }
 
 extension Polygon {
+    /// Swept time-of-impact against any collider. `ToI.t` is the fraction of `delta` at first contact.
     public func sweep(by delta: SIMD2<Float>, against target: CollisionShape,
                       movedBy targetDelta: SIMD2<Float> = .zero) -> ToI? {
         sweepConvex(support, by: delta, movedBy: targetDelta, against: target)
