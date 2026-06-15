@@ -207,16 +207,18 @@ Pitch, gain, stereo pan, and fades are native to the track API — no custom DSP
       In-memory WAV fixture (no committed binary). Demo: space fires a pitched, mouse-panned blip.
 - [ ] Deferred (minor): `Voice` pause/resume, per-category buses (`MIX_Group`), 3D positional audio.
 
-## Phase 18 — Collision: 2D shapes + queries ⏳
+## Phase 18 — Collision: 2D shapes + queries 🟡
 
 The gameplay enabler and a signature CF feature; pure math, zero GPU — ideal TDD, reuses
-`Sources/Bielik2D/Math/` (`Mat3x2`, `SIMD2`, `Rect`).
+`Sources/Bielik2D/Math/` (`Mat3x2`, `SIMD2`, `Rect`). Focused core shipped; `Poly`/`Halfspace`,
+GJK, swept TOI, and the hull builder are a deferred follow-up.
 
-- [ ] `Sources/Bielik2D/Collision/` — `Circle`, `AABB` (over `Rect`), `Capsule`, `Poly`, `Ray`.
-- [ ] `overlap(_:_:)` booleans → `manifold` (contact pts + depth + normal) → segment `raycast`
-      (normalize dir!) → `gjk` closest-points → swept `toi` → convex-hull builder.
-- [ ] Debug-draw shapes via `Draw` primitives (dovetails with Phase 19's capsule/poly).
-- [ ] Predicates tested against hand-computed expected results.
+- [x] `Sources/Bielik2D/Collision/` — `Circle`, `AABB` (min/max + `Rect` bridge), `Capsule`, `Ray`.
+- [x] `overlaps`/`manifold(with:)` (contact pt + depth + normal) / `cast(against:)` raycast
+      (direction normalized at `Ray` init), protocol-oriented across all shape pairs.
+- [ ] `gjk` closest-points → swept `toi` → convex-hull builder → `Poly`/`Halfspace` (deferred).
+- [x] Debug-draw shapes via `Draw.debug(_:)` (capsule SDF pulled forward from Phase 19).
+- [x] Predicates tested against hand-computed expected results.
 
 ## Phase 19 — Draw completeness: shapes, state stacks, text effects ⏳
 
