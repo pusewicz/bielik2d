@@ -57,7 +57,10 @@ Per step, with the mover at parameter `t ∈ [0,1]` along `relDelta`:
 3. **Safe advance:** `t += (d - target_tolerance) / vc`. This is the largest step that provably
    cannot cause penetration (the gap shrinks by at most `vc * Δt`).
 4. If `t > 1`, the impact is beyond the sweep → `nil`. If `d <= tolerance`, converged → impact at
-   `t` with the current `normal` and a contact point recovered from the GJK witness points.
+   `t` with a contact point recovered from the GJK witness points. The returned `ToI.normal` is
+   the **negated** separating normal so it faces back toward the mover — the outward surface
+   normal, matching `Raycast.normal`'s convention. (Internally the separating normal points
+   mover → target; the public result negates it.)
 5. Iteration cap (e.g. 32, matching `gjkDistance`) as a divergence backstop.
 
 **Halfspace closed-form:** the mover's nearest extent toward the solid side is its support in
