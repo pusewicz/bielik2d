@@ -12,6 +12,7 @@ public enum ShapeType: Float {
     case circle = 1
     case line = 2
     case box = 3
+    case capsule = 4
 }
 
 extension Draw {
