@@ -85,3 +85,21 @@ import kvSIMD
     #expect(hit != nil)
     #expect(abs(hit!.t - 0.9) < 1e-2)
 }
+
+@Test func sweepCircleHitsHalfspaceFloor() {
+    // Floor plane through (0,0), outward normal (0,1); solid side is below. Circle (0,5) r1
+    // falling by (0,-10): bottom at y=4, gap 4 -> t = 0.4, surface normal (0,1).
+    let mover = Circle(center: SIMD2(0, 5), radius: 1)
+    let floor = Halfspace(point: SIMD2(0, 0), normal: SIMD2(0, 1))
+    let hit = mover.sweep(by: SIMD2(0, -10), against: floor)
+    #expect(hit != nil)
+    #expect(abs(hit!.t - 0.4) < 1e-3)
+    #expect(hit!.normal.y > 0.9)
+    #expect(abs(hit!.point.y) < 1e-2)            // contact lands on the plane (y≈0)
+}
+
+@Test func sweepRecedingFromHalfspaceMisses() {
+    let mover = Circle(center: SIMD2(0, 5), radius: 1)
+    let floor = Halfspace(point: SIMD2(0, 0), normal: SIMD2(0, 1))
+    #expect(mover.sweep(by: SIMD2(0, 10), against: floor) == nil)   // moving away
+}

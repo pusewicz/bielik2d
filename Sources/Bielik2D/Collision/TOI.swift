@@ -58,6 +58,25 @@ func sweptTOIConvex(mover: Support, target: Support, relDelta: SIMD2<Float>) -> 
     return nil                                                  // failed to converge -> treat as miss
 }
 
+/// Swept TOI of a convex `mover` against a `Halfspace`. The mover's nearest extent toward the
+/// solid side (`support(-normal)`) closes against the plane at `-dot(relDelta, normal)`.
+func sweptTOIHalfspace(mover: Support, plane: Halfspace, relDelta: SIMD2<Float>) -> ToI? {
+    let tol: Float = 1e-4
+    let n = plane.normal                                    // outward; solid side is -n
+    let extent = mover.support(-n)                          // nearest core point toward the plane
+    let gap = simd_dot(extent - plane.point, n) - mover.radius
+    let closing = -simd_dot(relDelta, n)                    // >0 means moving toward the solid side
+    if closing <= 1e-8 {                                    // parallel or receding
+        guard gap <= tol else { return nil }
+        return ToI(t: 0, point: extent - n * mover.radius, normal: n)
+    }
+    let t = gap / closing
+    if t > 1 { return nil }
+    let tt = max(t, 0)
+    let contactExtent = extent + relDelta * tt
+    return ToI(t: tt, point: contactExtent - n * mover.radius, normal: n)
+}
+
 /// Sweep a convex `mover` (already reduced to its `Support`) by `delta` against any collider,
 /// with the target optionally moving by `targetDelta`. Convex targets go through GJK conservative
 /// advancement; `Halfspace` uses the closed-form path (added in Task 4). Unsupported colliders
@@ -72,6 +91,7 @@ func sweepConvex(_ mover: Support, by delta: SIMD2<Float>, movedBy targetDelta: 
     case let a as AABB:     result = sweptTOIConvex(mover: mover, target: a.support, relDelta: relDelta)
     case let c as Capsule:  result = sweptTOIConvex(mover: mover, target: c.support, relDelta: relDelta)
     case let p as Polygon:  result = sweptTOIConvex(mover: mover, target: p.support, relDelta: relDelta)
+    case let h as Halfspace: result = sweptTOIHalfspace(mover: mover, plane: h, relDelta: relDelta)
     default:                result = nil
     }
     guard var toi = result else { return nil }
