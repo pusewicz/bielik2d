@@ -154,6 +154,25 @@ extension Draw {
         capsule(from: cap.a, to: cap.b, radius: cap.radius, stroke: stroke, color: color)
     }
 
+    /// Debug-draw a collision polygon as a closed outline of line segments (one per edge).
+    public func debug(_ poly: Polygon, color: Color = Color(r: 0, g: 1, b: 0),
+                      stroke: Float = 1) {
+        let vs = poly.vertices
+        guard vs.count >= 2 else { return }
+        for i in 0..<vs.count {
+            line(from: vs[i], to: vs[(i + 1) % vs.count], thickness: stroke, color: color)
+        }
+    }
+
+    /// Debug-draw a collision half-space as a long line along its boundary (through `point`,
+    /// perpendicular to `normal`). `extent` is the half-length of the drawn segment.
+    public func debug(_ half: Halfspace, color: Color = Color(r: 0, g: 1, b: 0),
+                      stroke: Float = 1, extent: Float = 1000) {
+        let tangent = SIMD2<Float>(-half.normal.y, half.normal.x)
+        line(from: half.point - tangent * extent, to: half.point + tangent * extent,
+             thickness: stroke, color: color)
+    }
+
     // MARK: - Internal SDF emission helpers
 
     private func emitSDFQuad(type: ShapeType, bounds: Rect, color: Color,
