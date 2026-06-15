@@ -88,6 +88,47 @@ import Testing
     #expect(abs(v.uvBounds.y - (c.y - centroid.y)) < 1e-3)
 }
 
+@Test func polylineEmitsOneCapsulePerSegment() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.polyline([SIMD2<Float>(0, 0), SIMD2<Float>(10, 0), SIMD2<Float>(10, 10)], thickness: 4)
+    // 3 points -> 2 segments -> 2 capsules -> 12 vertices, all capsule type.
+    #expect(b.vertices.count == 12)
+    #expect(b.vertices.allSatisfy { $0.type == ShapeType.capsule.rawValue })
+}
+
+@Test func closedPolylineWrapsBackToStart() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.polyline([SIMD2<Float>(0, 0), SIMD2<Float>(10, 0), SIMD2<Float>(10, 10)],
+               thickness: 4, closed: true)
+    // 3 segments (incl. closing edge) -> 18 vertices.
+    #expect(b.vertices.count == 18)
+}
+
+@Test func polyOutlineIsAClosedPolyline() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.poly([SIMD2<Float>(0, 0), SIMD2<Float>(20, 0), SIMD2<Float>(10, 20)], stroke: 2)
+    #expect(b.vertices.count == 18)  // 3 segments
+    #expect(b.vertices.allSatisfy { $0.type == ShapeType.capsule.rawValue })
+}
+
+@Test func strokedTriIsAClosedThreeSegmentOutline() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.tri(SIMD2<Float>(0, 0), SIMD2<Float>(20, 0), SIMD2<Float>(10, 20), stroke: 2)
+    #expect(b.vertices.count == 18)
+    #expect(b.vertices.allSatisfy { $0.type == ShapeType.capsule.rawValue })
+}
+
+@Test func polylineWithFewerThanTwoPointsEmitsNothing() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.polyline([SIMD2<Float>(5, 5)], thickness: 4)
+    #expect(b.vertices.isEmpty)
+}
+
 @Test func lineEmitsQuadAlignedToSegment() {
     let b = Batcher()
     let d = Draw(batcher: b)

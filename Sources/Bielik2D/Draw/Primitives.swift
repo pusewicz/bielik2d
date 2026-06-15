@@ -184,6 +184,34 @@ extension Draw {
         )
     }
 
+    /// Connected line segments through `points`, each a round-capped `capsule`, so
+    /// the joints are naturally rounded. `closed` adds a segment back to the first point.
+    public func polyline(_ points: [SIMD2<Float>], thickness: Float, closed: Bool = false,
+                         color: Color = .white, aa: Float? = nil) {
+        guard points.count >= 2 else { return }
+        let aa = aa ?? currentShapeAA
+        let radius = thickness * 0.5
+        for i in 0..<(points.count - 1) {
+            capsule(from: points[i], to: points[i + 1], radius: radius, color: color, aa: aa)
+        }
+        if closed {
+            capsule(from: points[points.count - 1], to: points[0], radius: radius, color: color, aa: aa)
+        }
+    }
+
+    /// Polygon outline: a closed `polyline` of `stroke` thickness. (Filled convex
+    /// polygons are a deferred follow-up.)
+    public func poly(_ points: [SIMD2<Float>], stroke: Float,
+                     color: Color = .white, aa: Float? = nil) {
+        polyline(points, thickness: stroke, closed: true, color: color, aa: aa)
+    }
+
+    /// Triangle outline of the given `stroke` thickness (round joins via `polyline`).
+    public func tri(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ c: SIMD2<Float>,
+                    stroke: Float, color: Color = .white, aa: Float? = nil) {
+        polyline([a, b, c], thickness: stroke, closed: true, color: color, aa: aa)
+    }
+
     /// Debug-draw a collision circle as a thin ring. A zero-length stroked capsule is a
     /// ring of the given radius, so it reuses the capsule path (no stroked-circle branch needed).
     public func debug(_ c: Circle, color: Color = Color(r: 0, g: 1, b: 0),
