@@ -17,7 +17,7 @@ These are the modules where Bielik2D and CF actually compete — the engine surf
 |---|---|---|
 | **app** | ✅ | `App(title:width:height:)`, `isRunning`/`update`/`destroy`, window + GPU device, present-mode control, drawable pixel size + density. |
 | **graphics** | ✅ | Low-level GPU (pipelines, buffers, textures, samplers, passes) wrapped and hidden behind `Renderer`; HLSL→SPIR-V→MSL via shadercross. Public surface stays CF-style high-level. |
-| **draw** | 🟡 | `quad`/`sprite`/`canvas`, SDF `circleFill`/`line`/`box`/`capsule`. Scoped state via `with{}` + `pushTransform`/`pushColor`/`pushLayer`/`pushScaleMode`. **Missing:** outline `circle`, `boxFill`, `polyline`, `tri`, rounded box; `pushScissor`/`pushViewport`/`pushBlendState`/`pushShapeAA`. (Phase 19) |
+| **draw** | 🟡 | `quad`/`sprite`/`canvas`; SDF `circleFill`, outline `circle`, `line`, `box`/`boxFill` (rounded + stroked), `capsule`, filled + outlined `tri`, `polyline`, polygon outline `poly`. Scoped state via `with{}` + `pushTransform`/`pushColor`/`pushLayer`/`pushScaleMode`/`pushShapeAA`. **Missing:** filled convex `poly`; `pushScissor`/`pushViewport`/`pushBlendState`. (Phase 19 remaining slices) |
 | **sprite** | ✅ | `Sprite(path:)` with dedup via shared registry; animation model (loop/once/pingPong), `update`/`play`/`pause`/`resume`, runtime auto-atlaser packing into rolling 2048² pages (~one draw call per page). |
 | **custom_sprite** | ✅ | In-memory sheets via `makeSprite(sheet:frameWidth:frameHeight:fps:)` and grid slicing; no Aseprite yet (Phase 21). |
 | **audio** | ✅ | `Sound`/`Music`/`Voice` over SDL3_mixer; gain, stereo pan, dynamic pitch, fades, `crossfade(to:over:)`, master volume, ambient `Audio.current`. **Deferred:** voice pause/resume, category buses, 3D positional. |

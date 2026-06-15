@@ -213,6 +213,25 @@ while app.isRunning {
     let aiming = app.input.mouse.down(.left)
     draw.circleFill(center: aim, radius: aiming ? 18 : 10, color: Color(r: 1.0, g: 0.5, b: 0.2))
 
+    // Phase 19 shape primitives: outline circle, rounded fill, triangle (filled +
+    // outlined), polyline/poly, and a shapeAA contrast.
+    let shapeY: Float = 320
+    draw.circle(center: SIMD2(520, shapeY), radius: 34, thickness: 5, color: Color(r: 0.5, g: 0.9, b: 1.0))
+    draw.boxFill(Rect(x: 580, y: shapeY - 34, width: 68, height: 68), cornerRadius: 14,
+                 color: Color(r: 1.0, g: 0.7, b: 0.3))
+    draw.tri(SIMD2(680, shapeY + 34), SIMD2(748, shapeY + 34), SIMD2(714, shapeY - 34),
+             color: Color(r: 0.7, g: 1.0, b: 0.6))
+    draw.tri(SIMD2(780, shapeY + 34), SIMD2(848, shapeY + 34), SIMD2(814, shapeY - 34),
+             stroke: 4, color: Color(r: 1.0, g: 0.5, b: 0.8))
+    draw.polyline([SIMD2(890, shapeY + 30), SIMD2(920, shapeY - 30),
+                   SIMD2(950, shapeY + 30), SIMD2(980, shapeY - 30)],
+                  thickness: 5, color: Color(r: 0.9, g: 0.9, b: 0.4))
+    draw.with(shapeAA: 4.0) {
+        draw.poly([SIMD2(1020, shapeY - 30), SIMD2(1060, shapeY - 10),
+                   SIMD2(1045, shapeY + 30), SIMD2(1000, shapeY + 20)],
+                  stroke: 3, color: Color(r: 0.8, g: 0.7, b: 1.0))
+    }
+
     // Composite the offscreen canvas top-right, upscaled with pixel-art sampling.
     draw.with(scaleMode: .pixelArt) {
         draw.canvas(canvas, at: SIMD2(windowSize.x - canvasSize.x - 40, 40))

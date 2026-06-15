@@ -85,7 +85,8 @@ direction is the prioritized CF-parity roadmap in Phases 16–21 below.
 ## Phase 8 — SDF primitives 🟡
 
 - [x] `circleFill`, `line`, `box` (`PrimitivesTests`).
-- [ ] outline `circle`, `boxFill`, `capsule`, `polyline`, `tri`, rounded box — not yet implemented.
+- [x] outline `circle`, `boxFill` (rounded), `capsule`, `polyline`, `tri` (filled + outline), `poly`
+      outline (`PrimitivesTests`). Filled convex `poly` deferred.
 
 ## Phase 9 — Canvases (render-to-texture) ✅
 
@@ -226,10 +227,11 @@ The gameplay enabler and a signature CF feature; pure math, zero GPU — ideal T
 
 Half-built already (Phases 6/8), high return per effort, supports collision debug-draw + HUD.
 
-- [ ] SDF primitives: outline `circle`, `boxFill`, `capsule`, `polyline`, `tri`, rounded box —
-      extend `Draw/Primitives.swift` + the unified SDF shader (`Shaders/src/*.hlsl` + WGSL
-      overrides; capsule/poly add `ShapeType` branches).
-- [ ] Draw-state stacks `pushScissor` / `pushViewport` / `pushBlendState` / `pushShapeAA`
+- [x] SDF primitives: outline `circle`, `boxFill`, `capsule`, `polyline`, `tri` (filled + outline),
+      polygon outline `poly`, rounded box, and ambient `pushShapeAA` — extend `Draw/Primitives.swift`
+      + the unified SDF shader (`triangle` branch; `circle` gains a stroked path). Filled convex
+      `poly` deferred (needs a convex-poly SDF / vertex-layout rework).
+- [ ] Draw-state stacks `pushScissor` / `pushViewport` / `pushBlendState`
       (reuse the generic `StateStack<T>` in `Draw.swift`).
 - [ ] Text effects (color markup, outline, shadow) in `Sources/Bielik2D/Text/`.
 - [ ] Align `ScaleMode` naming with CF's `cf_draw_push_filter` (NEAREST/LINEAR/SMOOTH).
