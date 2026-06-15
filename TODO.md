@@ -210,13 +210,15 @@ Pitch, gain, stereo pan, and fades are native to the track API — no custom DSP
 ## Phase 18 — Collision: 2D shapes + queries 🟡
 
 The gameplay enabler and a signature CF feature; pure math, zero GPU — ideal TDD, reuses
-`Sources/Bielik2D/Math/` (`Mat3x2`, `SIMD2`, `Rect`). Focused core shipped; `Poly`/`Halfspace`,
-GJK, swept TOI, and the hull builder are a deferred follow-up.
+`Sources/Bielik2D/Math/` (`Mat3x2`, `SIMD2`, `Rect`). Core + GJK/EPA shipped; only swept TOI remains.
 
-- [x] `Sources/Bielik2D/Collision/` — `Circle`, `AABB` (min/max + `Rect` bridge), `Capsule`, `Ray`.
+- [x] `Sources/Bielik2D/Collision/` — `Circle`, `AABB` (min/max + `Rect` bridge), `Capsule`, `Ray`,
+      `Polygon` (+ convex-hull builder), `Halfspace`.
 - [x] `overlaps`/`manifold(with:)` (contact pt + depth + normal) / `cast(against:)` raycast
       (direction normalized at `Ray` init), protocol-oriented across all shape pairs.
-- [ ] `gjk` closest-points → swept `toi` → convex-hull builder → `Poly`/`Halfspace` (deferred).
+- [x] `gjk` distance/closest-points + EPA penetration for `Polygon` pairs; `distance(to:)` query;
+      convex-hull builder; `Polygon`/`Halfspace` shapes.
+- [ ] swept `toi` for continuous collision (deferred follow-up).
 - [x] Debug-draw shapes via `Draw.debug(_:)` (capsule SDF pulled forward from Phase 19).
 - [x] Predicates tested against hand-computed expected results.
 

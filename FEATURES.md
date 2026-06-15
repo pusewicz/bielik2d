@@ -23,7 +23,7 @@ These are the modules where Bielik2D and CF actually compete — the engine surf
 | **audio** | ✅ | `Sound`/`Music`/`Voice` over SDL3_mixer; gain, stereo pan, dynamic pitch, fades, `crossfade(to:over:)`, master volume, ambient `Audio.current`. **Deferred:** voice pause/resume, category buses, 3D positional. |
 | **input** | 🟡 | Keyboard (`down`/`pressed`/`released` + modifiers), mouse (position via camera, buttons, wheel), gamepad (buttons, analog sticks, triggers, hot-plug), via `app.input`. **Missing:** `binding` action map. |
 | **binding** | ⏳ | Action map ("jump" → key OR button). Follow-up to Phase 16. |
-| **collision** | 🟡 | `Circle`/`AABB`/`Capsule`/`Ray` with protocol-oriented `overlaps`/`manifold(with:)`/`cast(against:)` across all pairs; pure math, zero GPU; `Draw.debug(_:)` shapes (Phase 18). **Missing:** `Poly`/`Halfspace`, GJK, swept TOI, convex-hull builder (deferred follow-up). |
+| **collision** | 🟡 | `Circle`/`AABB`/`Capsule`/`Polygon`/`Halfspace`/`Ray` with protocol-oriented `overlaps`/`manifold(with:)`/`distance(to:)`/`cast(against:)` across all pairs; closed-form primitives + GJK/EPA for polygon pairs; convex-hull builder; `Draw.debug(_:)` shapes (Phase 18). **Missing:** swept time-of-impact (deferred follow-up). |
 | **math** | 🟡 | `Mat3x2`, `Rect`, SIMD2 via simd/kvSIMD; easing functions now ship in the `coroutine`/Flow module (Phase 20). **Missing:** geometry helpers that land with collision (Phase 18). |
 | **time** | ✅ | `Clock` (perf-counter delta) + `FrameTimer` (windowed avg/fps/max). |
 | **text** | 🟡 | `Font`, `TextEngine`, `Draw.text`, cached `Label` over SDL3_ttf + `TTF_GPUTextEngine`; HiDPI-crisp (native-density rasterization). **Missing:** color markup, outline, shadow (Phase 19). |
@@ -64,8 +64,8 @@ missing for shipping an actual game is **gameplay**: collision and richer draw p
 Collision's focused core (Phase 18) and coroutines/tweening (Phase 20) have shipped; the
 remaining top gaps:
 
-1. **Collision follow-up** — `Poly`/`Halfspace` shapes, GJK closest-points, swept TOI, and the
-   convex-hull builder, on top of the closed-form core now in place.
-2. **Draw completeness (Phase 19)** — `poly`/`tri` primitives (the `capsule` SDF already landed
+1. **Draw completeness (Phase 19)** — `poly`/`tri` primitives (the `capsule` SDF already landed
    with collision debug-draw), plus the state stacks (`pushScissor`/`pushBlendState`) and text
    effects to round out the HUD/UI surface.
+2. **Collision follow-up** — swept time-of-impact for continuous (tunnel-proof) collision, on top
+   of the GJK/EPA core now in place.
