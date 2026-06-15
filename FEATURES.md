@@ -24,10 +24,10 @@ These are the modules where Bielik2D and CF actually compete — the engine surf
 | **input** | 🟡 | Keyboard (`down`/`pressed`/`released` + modifiers), mouse (position via camera, buttons, wheel), gamepad (buttons, analog sticks, triggers, hot-plug), via `app.input`. **Missing:** `binding` action map. |
 | **binding** | ⏳ | Action map ("jump" → key OR button). Follow-up to Phase 16. |
 | **collision** | ⏳ | **The next big gameplay enabler (Phase 18).** `Circle`/`AABB`/`Capsule`/`Poly`/`Ray`, overlap → manifold → raycast → GJK → swept TOI → hull builder. Pure math, zero GPU. |
-| **math** | 🟡 | `Mat3x2`, `Rect`, SIMD2 via simd/kvSIMD. **Missing:** easing functions (Phase 20), geometry helpers that land with collision (Phase 18). |
+| **math** | 🟡 | `Mat3x2`, `Rect`, SIMD2 via simd/kvSIMD; easing functions now ship in the `coroutine`/Flow module (Phase 20). **Missing:** geometry helpers that land with collision (Phase 18). |
 | **time** | ✅ | `Clock` (perf-counter delta) + `FrameTimer` (windowed avg/fps/max). |
 | **text** | 🟡 | `Font`, `TextEngine`, `Draw.text`, cached `Label` over SDL3_ttf + `TTF_GPUTextEngine`; HiDPI-crisp (native-density rasterization). **Missing:** color markup, outline, shadow (Phase 19). |
-| **coroutine** | ⏳ | Frame-stepped coroutine/sequence runner + tweening (Phase 20). |
+| **coroutine** | ✅ | `Flow` runner auto-driven by `App` (`app.deltaTime`/`time`); frame-stepped `Tween` (keypath target, lazy start capture, full Penner easing) and a `Routine`/`Parallel`/`Repeat`/`Wait`/`Run` result-builder DSL with same-frame overflow forwarding; cancellable `RoutineHandle`. (Phase 20) |
 | **image** | 🟡 | `ImageBytes`, `subImage`, padding/gutter, PNG decode. No general pixel-manipulation API (not on critical path). |
 | **haptic** | ⛔ | Rumble/force feedback. Follow-up to input. |
 | **noise** | ⛔ | Perlin/fBm. Useful for procgen, off critical path. |
@@ -48,16 +48,16 @@ CF ships these because it's a C framework. In Swift they're not gaps and won't b
 
 | Status | Count | Modules |
 |---|---|---|
-| ✅ shipped | 6 | app, graphics, sprite, custom_sprite, audio, time |
+| ✅ shipped | 7 | app, graphics, sprite, custom_sprite, audio, time, coroutine |
 | 🟡 partial | 6 | draw, input, math, text, image, web |
-| ⏳ planned | 3 | collision, binding, coroutine |
+| ⏳ planned | 2 | collision, binding |
 | ⛔ deferred | 4 | haptic, noise, random, net |
 | ➖ stdlib | 13 | allocator, array, atomic, base64, CPU, file, json, list, map, multithreading, path, string, utility |
 
 **Where we stand:** the rendering core is solid and the two biggest post-v0 enablers (input, audio)
 have landed. The engine can already put an animated, batched, HiDPI-crisp sprite scene on screen
-with sound and full input. What's missing for shipping an actual game is **gameplay**: collision,
-richer draw primitives, and game-logic flow (tweens/coroutines).
+with sound and full input, and now drive game-logic flow with tweens and coroutines. What's still
+missing for shipping an actual game is **gameplay**: collision and richer draw primitives.
 
 ## What to build next
 
@@ -69,7 +69,8 @@ Following TODO.md's sequencing (16 → 20, interleaving 19 into 18):
 2. **Draw completeness (Phase 19)** — dovetails with collision: `capsule`/`poly`/`tri` primitives
    give collision debug-draw, and the state stacks (`pushScissor`/`pushBlendState`) plus text
    effects round out the HUD/UI surface.
-3. **Coroutines & tweening (Phase 20)** — the game-feel multiplier for cutscenes, timed sequences,
-   and UI animation.
+
+Phase 20 (coroutines & tweening) has shipped — the game-feel layer is in place, so the remaining
+top-5 gaps are collision and draw completeness.
 
 **Recommendation: start Phase 18 (collision)** on a feature worktree, red-green TDD.
