@@ -129,6 +129,17 @@ import Testing
     #expect(b.vertices.isEmpty)
 }
 
+@Test func boxFillEmitsFilledBox() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.boxFill(Rect(x: 0, y: 0, width: 40, height: 20), cornerRadius: 6)
+    #expect(b.vertices.count == 6)
+    let v = b.vertices.first!
+    #expect(v.type == ShapeType.box.rawValue)
+    #expect(v.fill == 1)
+    #expect(v.radius == 6)  // cornerRadius forwarded
+}
+
 @Test func lineEmitsQuadAlignedToSegment() {
     let b = Batcher()
     let d = Draw(batcher: b)

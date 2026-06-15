@@ -77,6 +77,12 @@ extension Draw {
         )
     }
 
+    /// Filled (optionally rounded) box — a CF-named convenience over `box(stroke: 0)`.
+    public func boxFill(_ rect: Rect, cornerRadius: Float = 0,
+                        color: Color = .white, aa: Float? = nil) {
+        box(rect, stroke: 0, cornerRadius: cornerRadius, color: color, aa: aa)
+    }
+
     /// Anti-aliased line segment with a given thickness.
     public func line(from a: SIMD2<Float>, to b: SIMD2<Float>, thickness: Float,
                      color: Color = .white, aa: Float? = nil) {
