@@ -14,6 +14,7 @@ public final class Draw {
     private var colors = StateStack(initial: Color.white)
     private var layers = StateStack(initial: 0)
     private var scaleModes = StateStack(initial: ScaleMode.default)
+    private var shapeAAs = StateStack(initial: 1.5 / Draw.ambientPixelDensity)
 
     /// The Draw that `sprite.draw(at:)` queues into — set to the most recently created
     /// Draw. `nonisolated(unsafe)` for the same single-threaded reason as
@@ -104,6 +105,20 @@ public final class Draw {
 
     public var currentScaleMode: ScaleMode { scaleModes.peek }
 
+    // MARK: - Shape anti-aliasing (ambient default for SDF primitives)
+
+    /// Sets the ambient AA band (world units) that SDF primitives use when their
+    /// `aa:` argument is omitted. Defaults to `1.5 / ambientPixelDensity`.
+    public func pushShapeAA(_ aa: Float) {
+        shapeAAs.push(aa)
+    }
+
+    public func popShapeAA() {
+        _ = shapeAAs.pop()
+    }
+
+    public var currentShapeAA: Float { shapeAAs.peek }
+
     // MARK: - Scoped state
 
     /// Runs `body` with the given state pushed, popping it again on exit (even if
@@ -117,12 +132,15 @@ public final class Draw {
                         color: Color? = nil,
                         layer: Int? = nil,
                         scaleMode: ScaleMode? = nil,
+                        shapeAA: Float? = nil,
                         _ body: () throws -> R) rethrows -> R {
         if let transform { pushTransform(transform) }
         if let color { pushColor(color) }
         if let layer { pushLayer(layer) }
         if let scaleMode { pushScaleMode(scaleMode) }
+        if let shapeAA { pushShapeAA(shapeAA) }
         defer {
+            if shapeAA != nil { popShapeAA() }
             if scaleMode != nil { popScaleMode() }
             if layer != nil { popLayer() }
             if color != nil { popColor() }

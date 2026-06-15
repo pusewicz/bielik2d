@@ -17,7 +17,8 @@ public enum ShapeType: Float {
 
 extension Draw {
     /// Filled circle in world space, with antialiased edge.
-    public func circleFill(center: SIMD2<Float>, radius: Float, color: Color = .white, aa: Float = 1.5 / Draw.ambientPixelDensity) {
+    public func circleFill(center: SIMD2<Float>, radius: Float, color: Color = .white, aa: Float? = nil) {
+        let aa = aa ?? currentShapeAA
         // Slightly larger quad to give AA room.
         let pad = aa
         let extent = radius + pad
@@ -29,7 +30,8 @@ extension Draw {
     /// Filled or outlined box. `stroke` 0 means filled; >0 means an outline of that
     /// thickness centred on the rect boundary. `cornerRadius` 0 means sharp corners.
     public func box(_ rect: Rect, stroke: Float = 0, cornerRadius: Float = 0,
-                    color: Color = .white, aa: Float = 1.5 / Draw.ambientPixelDensity) {
+                    color: Color = .white, aa: Float? = nil) {
+        let aa = aa ?? currentShapeAA
         let halfW = rect.width / 2
         let halfH = rect.height / 2
         // Extend the quad so there is room for the AA fringe (and for the stroke
@@ -63,7 +65,8 @@ extension Draw {
 
     /// Anti-aliased line segment with a given thickness.
     public func line(from a: SIMD2<Float>, to b: SIMD2<Float>, thickness: Float,
-                     color: Color = .white, aa: Float = 1.5 / Draw.ambientPixelDensity) {
+                     color: Color = .white, aa: Float? = nil) {
+        let aa = aa ?? currentShapeAA
         let dir = b - a
         let len = simd_length(dir)
         guard len > 0 else { return }
@@ -100,8 +103,8 @@ extension Draw {
     /// Filled or outlined capsule: a segment `a`→`b` with rounded ends of `radius`.
     /// `stroke` 0 fills; `> 0` draws an outline of that thickness centred on the boundary.
     public func capsule(from a: SIMD2<Float>, to b: SIMD2<Float>, radius: Float,
-                        stroke: Float = 0, color: Color = .white,
-                        aa: Float = 1.5 / Draw.ambientPixelDensity) {
+                        stroke: Float = 0, color: Color = .white, aa: Float? = nil) {
+        let aa = aa ?? currentShapeAA
         let dir = b - a
         let len = simd_length(dir)
         let d = len > 1e-6 ? dir / len : SIMD2<Float>(1, 0)
