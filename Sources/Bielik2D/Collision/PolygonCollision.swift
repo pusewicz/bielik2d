@@ -43,11 +43,25 @@ func gjkManifold(_ a: Support, _ b: Support) -> Manifold? {
 extension Polygon {
     public func overlaps(_ o: Polygon) -> Bool { gjkOverlap(support, o.support) }
     public func overlaps(_ o: Circle) -> Bool { gjkOverlap(support, o.support) }
+    public func overlaps(_ o: AABB) -> Bool { gjkOverlap(support, o.support) }
+    public func overlaps(_ o: Capsule) -> Bool { gjkOverlap(support, o.support) }
     public func manifold(with o: Polygon) -> Manifold? { gjkManifold(support, o.support) }
     public func manifold(with o: Circle) -> Manifold? { gjkManifold(support, o.support) }
+    public func manifold(with o: AABB) -> Manifold? { gjkManifold(support, o.support) }
+    public func manifold(with o: Capsule) -> Manifold? { gjkManifold(support, o.support) }
 }
 
 extension Circle {
+    public func overlaps(_ o: Polygon) -> Bool { o.overlaps(self) }
+    public func manifold(with o: Polygon) -> Manifold? { flipPoly(o.manifold(with: self)) }
+}
+
+extension AABB {
+    public func overlaps(_ o: Polygon) -> Bool { o.overlaps(self) }
+    public func manifold(with o: Polygon) -> Manifold? { flipPoly(o.manifold(with: self)) }
+}
+
+extension Capsule {
     public func overlaps(_ o: Polygon) -> Bool { o.overlaps(self) }
     public func manifold(with o: Polygon) -> Manifold? { flipPoly(o.manifold(with: self)) }
 }
