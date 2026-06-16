@@ -2,6 +2,11 @@
 import JavaScriptKit
 import Bielik2D
 
+/// Portable name for an offscreen render target. Native exposes a `Canvas` value;
+/// the web build aliases it to `WebCanvas` so demo scenes name `Canvas` and never
+/// branch on platform.
+public typealias Canvas = WebCanvas
+
 /// An offscreen WebGPU render target — the web counterpart of the native
 /// `Canvas`. Create one with `WebRenderer.makeCanvas(width:height:)`, render a
 /// `Draw` into it with `WebRenderer.render(_:to:)`, then sample it back into a
@@ -10,6 +15,9 @@ import Bielik2D
 /// The backing texture is colour-target + sampler usable; the renderer registers
 /// `token` against its bind-group table at creation, so `Draw.canvas` only needs
 /// to bind the token (the same texture-token mechanism glyph textures use).
+///
+/// Portable scene code names the type `Canvas` (the native value's name); the
+/// `Canvas` typealias below maps that onto `WebCanvas` so source never branches.
 public struct WebCanvas {
     public let texture: JSObject
     /// The opaque key the batcher carries; the renderer maps it to the texture's

@@ -153,7 +153,12 @@ public final class WebRenderer: RenderBackend {
     /// Allocates an offscreen render target and registers it under a stable token
     /// so `Draw.canvas(_:at:)` can bind it as a sampled texture. The colour format
     /// matches the swapchain so the shared pipelines render into it unchanged.
-    public func makeCanvas(width: Int, height: Int) -> WebCanvas {
+    ///
+    /// `format` and `throws` exist only to mirror the native `makeCanvas` signature
+    /// so portable scene code (`try makeCanvas(width:height:format:)`) compiles
+    /// unchanged; on web the render-target format always tracks the swapchain, so
+    /// `format` is advisory and creation never actually fails here.
+    public func makeCanvas(width: Int, height: Int, format: TextureFormat = .rgba8Unorm) throws -> WebCanvas {
         let texture = backend.makeRenderTarget(width: width, height: height)
         let cell = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
         canvasTokenStorage.append(cell)
