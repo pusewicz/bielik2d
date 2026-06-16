@@ -96,8 +96,12 @@ nil` (push-if-provided, auto-pop in reverse order), matching the existing patter
 current `with`, a `nil` argument means "don't push this axis" — there is no "push no-clip" via
 `with` (structure scopes to clear a clip), keeping the API consistent.
 
-`reset()` (frame teardown) must also reset the three stacks to their initials alongside the
-existing ones, so a leaked push can't bleed across frames.
+Frame teardown follows the existing convention: `Draw.clearQueue()` calls `batcher.reset()`, which
+resets `DrawCallState` to its default — and because the two new fields default to `nil` (no clip /
+full target) and `blendMode` to `.alpha`, that reset already clears them. The `Draw`-side stacks
+are NOT force-reset per frame (the existing transform/color/layer/scaleMode/shapeAA stacks aren't
+either); they rely on balanced push/pop, with `with { }` making imbalance impossible. So no new
+reset wiring is needed.
 
 ### 3. `RenderPass` (`Sources/Bielik2D/GPU/RenderPass.swift`)
 
