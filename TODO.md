@@ -74,7 +74,7 @@ direction is the prioritized CF-parity roadmap in Phases 16–21 below.
 
 - [x] Generic `StateStack<T>` (`StateStackTests`).
 - [x] `pushTransform` / `pushColor` / `pushLayer` (+ `pushScaleMode`, `with { }` — see below).
-- [ ] `pushScissor` / `pushViewport` / `pushShapeAA` / `pushBlendState` — not yet implemented.
+- [x] `pushScissor` / `pushViewport` / `pushShapeAA` / `pushBlendState`.
 - [x] `Camera` view/projection, applied as the per-flush view-projection.
 
 ## Phase 7 — Sprite loading ✅
@@ -231,8 +231,9 @@ Half-built already (Phases 6/8), high return per effort, supports collision debu
       polygon outline `poly`, rounded box, and ambient `pushShapeAA` — extend `Draw/Primitives.swift`
       + the unified SDF shader (`triangle` branch; `circle` gains a stroked path). Filled convex
       `poly` deferred (needs a convex-poly SDF / vertex-layout rework).
-- [ ] Draw-state stacks `pushScissor` / `pushViewport` / `pushBlendState`
-      (reuse the generic `StateStack<T>` in `Draw.swift`).
+- [x] Draw-state stacks `pushScissor` / `pushViewport` / `pushBlendState` (reuse the generic
+      `StateStack<T>`; per-command state applied at flush — scissor/viewport in logical points
+      scaled to target pixels, blend selects the pipeline).
 - [ ] Text effects (color markup, outline, shadow) in `Sources/Bielik2D/Text/`.
 - [ ] Align `ScaleMode` naming with CF's `cf_draw_push_filter` (NEAREST/LINEAR/SMOOTH).
 
