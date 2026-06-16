@@ -18,4 +18,18 @@ struct SDL3AssetLoaderTests {
         #expect(image.height == 4)
         #expect(image.pixels.count == 4 * 4 * 4)
     }
+
+    @Test func cachePrefetchMakesImageResident() async throws {
+        let path = fixturePath("4x4.png")
+        let cache = SDL3AssetCache()
+        #expect(cache.image(path) == nil)
+
+        try await cache.prefetch([path])
+
+        let image = cache.image(path)
+        #expect(image != nil)
+        #expect(image?.width == 4)
+        #expect(image?.height == 4)
+        #expect(image?.rgba.count == 4 * 4 * 4)
+    }
 }

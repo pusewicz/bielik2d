@@ -43,4 +43,28 @@ public enum SDL3AssetLoader {
         return ImageBytes(width: w, height: h, pixels: dst as Data)
     }
 }
+
+/// Native `AssetLoader`: decodes images synchronously off disk (via
+/// `SDL3AssetLoader.loadImage`) and caches the decoded RGBA for synchronous
+/// per-frame lookup. `prefetch` completes immediately on native.
+public final class SDL3AssetCache: AssetLoader {
+    private var cache: [String: LoadedImage] = [:]
+
+    public init() {}
+
+    public func prefetch(_ paths: [String]) async throws {
+        for path in paths where cache[path] == nil {
+            let bytes = try SDL3AssetLoader.loadImage(path: path)
+            cache[path] = LoadedImage(
+                width: bytes.width,
+                height: bytes.height,
+                rgba: [UInt8](bytes.pixels)
+            )
+        }
+    }
+
+    public func image(_ path: String) -> LoadedImage? {
+        cache[path]
+    }
+}
 #endif
