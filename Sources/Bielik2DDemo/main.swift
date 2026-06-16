@@ -19,6 +19,7 @@ let stage = Rect(x: 40, y: titleBandHeight,
 let scenes: [Scene] = [
     try SpritesScene(app: app),
     try PixelArtScene(app: app),
+    try InputScene(app: app),
 ]
 var current = 0
 
