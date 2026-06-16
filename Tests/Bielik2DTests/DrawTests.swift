@@ -125,3 +125,41 @@ private let white = SIMD4<Float>(1, 1, 1, 1)
     #expect(b.vertices.first?.pos == SIMD2<Float>(10, 5))
     #expect(d.currentTransform == .identity)   // reverted
 }
+
+@Test func pushScissorSplitsAndRestores() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    let s = Rect(x: 10, y: 20, width: 100, height: 50)
+    d.quad(rect: unit, uv: uv, color: white)
+    d.pushScissor(s)
+    #expect(d.currentScissor == s)
+    d.quad(rect: unit, uv: uv, color: white)
+    d.popScissor()
+    #expect(d.currentScissor == nil)
+    d.quad(rect: unit, uv: uv, color: white)
+    let cmds = b.commands
+    #expect(cmds.count == 3)
+    #expect(cmds[0].state.scissor == nil)
+    #expect(cmds[1].state.scissor == s)
+    #expect(cmds[2].state.scissor == nil)
+}
+
+@Test func pushBlendStateAffectsCommandState() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.pushBlendState(.additive)
+    #expect(d.currentBlendState == .additive)
+    d.quad(rect: unit, uv: uv, color: white)
+    #expect(b.commands.last?.state.blendMode == .additive)
+}
+
+@Test func withScissorScopesAndAutoPops() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    let s = Rect(x: 0, y: 0, width: 10, height: 10)
+    d.with(scissor: s) {
+        d.quad(rect: unit, uv: uv, color: white)
+    }
+    #expect(d.currentScissor == nil)
+    #expect(b.commands.first?.state.scissor == s)
+}

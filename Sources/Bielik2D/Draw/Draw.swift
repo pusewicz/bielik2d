@@ -15,6 +15,9 @@ public final class Draw {
     private var layers = StateStack(initial: 0)
     private var scaleModes = StateStack(initial: ScaleMode.default)
     private var shapeAAs = StateStack(initial: 1.5 / Draw.ambientPixelDensity)
+    private var scissors = StateStack(initial: Rect?.none)
+    private var viewports = StateStack(initial: Rect?.none)
+    private var blends = StateStack(initial: BlendMode.alpha)
 
     /// The Draw that `sprite.draw(at:)` queues into — set to the most recently created
     /// Draw. `nonisolated(unsafe)` for the same single-threaded reason as
@@ -119,6 +122,23 @@ public final class Draw {
 
     public var currentShapeAA: Float { shapeAAs.peek }
 
+    // MARK: - Scissor / viewport / blend (forward to batcher state)
+
+    /// Clip subsequent draws to `rect` (logical points, target-space). Replace semantics.
+    public func pushScissor(_ rect: Rect) { scissors.push(rect); batcher.setScissor(rect) }
+    public func popScissor() { _ = scissors.pop(); batcher.setScissor(scissors.peek) }
+    public var currentScissor: Rect? { scissors.peek }
+
+    /// Render subsequent draws into `rect` (logical points, target-space) of the target.
+    public func pushViewport(_ rect: Rect) { viewports.push(rect); batcher.setViewport(rect) }
+    public func popViewport() { _ = viewports.pop(); batcher.setViewport(viewports.peek) }
+    public var currentViewport: Rect? { viewports.peek }
+
+    /// Blend mode for subsequent draws.
+    public func pushBlendState(_ mode: BlendMode) { blends.push(mode); batcher.setBlend(mode) }
+    public func popBlendState() { _ = blends.pop(); batcher.setBlend(blends.peek) }
+    public var currentBlendState: BlendMode { blends.peek }
+
     // MARK: - Scoped state
 
     /// Runs `body` with the given state pushed, popping it again on exit (even if
@@ -133,13 +153,22 @@ public final class Draw {
                         layer: Int? = nil,
                         scaleMode: ScaleMode? = nil,
                         shapeAA: Float? = nil,
+                        scissor: Rect? = nil,
+                        viewport: Rect? = nil,
+                        blendState: BlendMode? = nil,
                         _ body: () throws -> R) rethrows -> R {
         if let transform { pushTransform(transform) }
         if let color { pushColor(color) }
         if let layer { pushLayer(layer) }
         if let scaleMode { pushScaleMode(scaleMode) }
         if let shapeAA { pushShapeAA(shapeAA) }
+        if let scissor { pushScissor(scissor) }
+        if let viewport { pushViewport(viewport) }
+        if let blendState { pushBlendState(blendState) }
         defer {
+            if blendState != nil { popBlendState() }
+            if viewport != nil { popViewport() }
+            if scissor != nil { popScissor() }
             if shapeAA != nil { popShapeAA() }
             if scaleMode != nil { popScaleMode() }
             if layer != nil { popLayer() }
