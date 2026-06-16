@@ -27,6 +27,7 @@ let scenes: [Scene] = [
     FlowScene(app: app),
     CollisionScene(app: app),
     SweptTOIScene(app: app),
+    DrawStateScene(app: app),
 ]
 var current = 0
 
