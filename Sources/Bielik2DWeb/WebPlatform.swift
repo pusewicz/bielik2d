@@ -7,14 +7,41 @@ import JavaScriptKit
 /// DOM `keydown`/`keyup`/`mousemove`/`mousedown`/`mouseup` listeners plus a
 /// per-frame poll of `navigator.getGamepads()`.
 ///
-/// Edge semantics match native: the RAF tick calls `input.beginFrame()` (snapshot
-/// "previous", reset deltas) at the top of the frame, exactly where
-/// `SDL3Platform.pollEvents` does, so `pressed`/`released` resolve the same way.
-/// Keyboard/mouse events stream in asynchronously between ticks and mutate `input`
-/// directly — they sit on top of the frame's snapshot, just like SDL events do
-/// after `beginFrame` in the native poll loop. Gamepads have no DOM events, so we
-/// poll them once per tick right after `beginFrame`.
+/// Edge semantics match native: `advanceInput()` calls `input.advanceFrame()`
+/// (snapshot "previous", reset deltas) at the top of the frame, exactly where
+/// `SDL3Platform.pollEvents` calls `input.beginFrame()`, then drains the frame's
+/// queued DOM events into `input` — so events that arrived since the last frame
+/// are applied to `current` *after* `previous` was snapshotted, just like SDL
+/// events apply after `beginFrame` in the native poll loop. This is the whole
+/// reason `pressed`/`released` edges resolve the same way as native.
+///
+/// Critically, the DOM listeners must NOT mutate `input` directly: they fire
+/// asynchronously between RAF ticks, so a `keydown` that mutated `current` before
+/// `advanceFrame` ran would have `previous` snapshot the *already-pressed* state,
+/// erasing the rising edge (`pressed` never true). Instead each listener appends a
+/// small `PendingEvent` to `pendingEvents`, and `advanceInput()` drains them in
+/// arrival order after the snapshot. Gamepads have no DOM events, so we poll them
+/// once per tick after draining.
 public final class WebPlatform {
+    /// A DOM input event captured by a listener and replayed into `input` during
+    /// the next `advanceInput()` drain — after the per-frame snapshot, so it lands
+    /// on `current` (not `previous`) and the edge survives. Mirrors how SDL events
+    /// queue and get pumped after `beginFrame` on native.
+    private enum PendingEvent {
+        case keyDown(Key)
+        case keyUp(Key)
+        case mouseMove(point: SIMD2<Float>, delta: SIMD2<Float>)
+        case mouseDown(MouseButton)
+        case mouseUp(MouseButton)
+        case wheel(SIMD2<Float>)
+    }
+
+    /// Events captured by DOM listeners since the last frame, drained in arrival
+    /// order by `advanceInput()`. Appended to on the JS event-loop turn the browser
+    /// dispatches each listener; drained once per RAF frame. Single-threaded JS, so
+    /// no locking needed.
+    private var pendingEvents: [PendingEvent] = []
+
     public let canvas: JSObject
     public private(set) var size: SIMD2<Int>
     /// `devicePixelRatio` captured at `attach`. The canvas `size` is CSS × this, so
@@ -33,6 +60,7 @@ public final class WebPlatform {
     private var mouseMoveClosure: JSClosure?
     private var mouseDownClosure: JSClosure?
     private var mouseUpClosure: JSClosure?
+    private var wheelClosure: JSClosure?
 
     // The browser gamepad slots we've told `Input` about (index → connected). We
     // diff this against `navigator.getGamepads()` each frame to fire connect /
@@ -98,12 +126,35 @@ public final class WebPlatform {
 
     /// Advance the per-frame input edges and poll the gamepads — the work the RAF
     /// tick used to do inline. Called once per frame by `App.update()` so input
-    /// advances exactly once before scene code reads it. Snapshots "previous"
-    /// (`input.advanceFrame()`), then pushes the current gamepad snapshot, exactly
-    /// where `SDL3Platform.pollEvents` sits in the native frame.
+    /// advances exactly once before scene code reads it.
+    ///
+    /// Order mirrors native `SDL3Platform.pollEvents` exactly:
+    /// 1. `input.advanceFrame()` — snapshot "previous = current", reset deltas.
+    /// 2. drain the queued DOM events in arrival order, feeding each into `input`
+    ///    so they mutate `current` *after* the snapshot (preserving the edge).
+    /// 3. `pollGamepads()` — the gamepad API has no events, so we read full state.
     public func advanceInput() {
         input.advanceFrame()
+        drainPendingEvents()
         pollGamepads()
+    }
+
+    /// Replay every DOM event captured since the last frame into `input`, in the
+    /// order the browser dispatched them, then clear the buffer. Runs after the
+    /// frame snapshot, so a `keyDown` queued between ticks lands on `current` with
+    /// `previous` already false → `pressed` true for one frame, matching native.
+    private func drainPendingEvents() {
+        for event in pendingEvents {
+            switch event {
+            case .keyDown(let key): input.feedKeyDown(key)
+            case .keyUp(let key): input.feedKeyUp(key)
+            case .mouseMove(let point, let delta): input.feedMouseMove(to: point, delta: delta)
+            case .mouseDown(let button): input.feedMouseDown(button)
+            case .mouseUp(let button): input.feedMouseUp(button)
+            case .wheel(let amount): input.feedMouseWheel(amount)
+            }
+        }
+        pendingEvents.removeAll(keepingCapacity: true)
     }
 
     public func requestQuit() {
@@ -119,14 +170,14 @@ public final class WebPlatform {
             // matching native (`!ev.key.repeat`).
             if event["repeat"].boolean == true { return .undefined }
             if let code = event["code"].string, let key = Key(browserCode: code) {
-                self.input.feedKeyDown(key)
+                self.pendingEvents.append(.keyDown(key))
             }
             return .undefined
         }
         let onKeyUp = JSClosure { [weak self] args in
             guard let self, let event = args.first?.object else { return .undefined }
             if let code = event["code"].string, let key = Key(browserCode: code) {
-                self.input.feedKeyUp(key)
+                self.pendingEvents.append(.keyUp(key))
             }
             return .undefined
         }
@@ -143,31 +194,45 @@ public final class WebPlatform {
             guard let self, let event = args.first?.object else { return .undefined }
             let point = self.canvasPixel(event)
             // Delta in the engine's pixel space; first move seeds with zero delta.
+            // `lastMouse` is updated here at capture time so successive queued moves
+            // carry the right incremental delta; `Mouse.moved` accumulates them.
             let delta = self.lastMouse.map { point - $0 } ?? .zero
             self.lastMouse = point
-            self.input.feedMouseMove(to: point, delta: delta)
+            self.pendingEvents.append(.mouseMove(point: point, delta: delta))
             return .undefined
         }
         let onDown = JSClosure { [weak self] args in
             guard let self, let event = args.first?.object else { return .undefined }
             if let button = Self.mouseButton(event["button"].number) {
-                self.input.feedMouseDown(button)
+                self.pendingEvents.append(.mouseDown(button))
             }
             return .undefined
         }
         let onUp = JSClosure { [weak self] args in
             guard let self, let event = args.first?.object else { return .undefined }
             if let button = Self.mouseButton(event["button"].number) {
-                self.input.feedMouseUp(button)
+                self.pendingEvents.append(.mouseUp(button))
             }
+            return .undefined
+        }
+        // Wheel events carry pixel/line deltas; feed the Y delta as a scroll amount
+        // the same way native pumps `SDL_EVENT_MOUSE_WHEEL`. `deltaX`/`deltaY` are
+        // in the DOM's "down/right positive" convention, matching SDL's wheel sign.
+        let onWheel = JSClosure { [weak self] args in
+            guard let self, let event = args.first?.object else { return .undefined }
+            let dx = Float(event["deltaX"].number ?? 0)
+            let dy = Float(event["deltaY"].number ?? 0)
+            self.pendingEvents.append(.wheel(SIMD2(dx, dy)))
             return .undefined
         }
         self.mouseMoveClosure = onMove
         self.mouseDownClosure = onDown
         self.mouseUpClosure = onUp
+        self.wheelClosure = onWheel
         _ = canvas.addEventListener!("mousemove", onMove)
         _ = canvas.addEventListener!("mousedown", onDown)
         _ = canvas.addEventListener!("mouseup", onUp)
+        _ = canvas.addEventListener!("wheel", onWheel)
     }
 
     /// A `MouseEvent` page position translated into the engine's pixel space:
