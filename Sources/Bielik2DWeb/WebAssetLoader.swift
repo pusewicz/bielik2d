@@ -20,7 +20,7 @@ public enum WebAssetError: Error, CustomStringConvertible {
 /// code (mirroring how the native loader reads from disk). The decode draws the
 /// `ImageBitmap` onto an `OffscreenCanvas` 2D context and pulls `getImageData`,
 /// which yields top-left-origin RGBA8 — exactly the `LoadedImage` contract.
-public final class WebAssetLoader: AssetLoader {
+public final class WebAssetLoader: AssetLoader, @unchecked Sendable {
     private var cache: [String: LoadedImage] = [:]
 
     public init() {}

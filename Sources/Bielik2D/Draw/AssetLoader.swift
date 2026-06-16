@@ -1,7 +1,12 @@
 /// Loads image bytes/textures for sprites. Native loads synchronously from disk;
 /// web fetches asynchronously. The demo preloads through `prefetch` before its
 /// loop so per-frame scene code reads from the populated cache synchronously.
-public protocol AssetLoader: AnyObject {
+/// `Sendable` so the existential `any AssetLoader` can cross the `await` in the
+/// demo's `prefetch` call (the web bootstrap `await`s it from a `@MainActor`
+/// `Task`). Both shipping loaders touch their cache only from the single render
+/// thread (native loop) / single wasm thread (web), so the conformance is via
+/// `@unchecked Sendable` on each.
+public protocol AssetLoader: AnyObject, Sendable {
     /// Asynchronously ensure `paths` are resident. On native this may complete
     /// immediately; on web it awaits `fetch`/`createImageBitmap`.
     func prefetch(_ paths: [String]) async throws

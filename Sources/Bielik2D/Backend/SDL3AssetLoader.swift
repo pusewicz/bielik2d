@@ -47,7 +47,7 @@ public enum SDL3AssetLoader {
 /// Native `AssetLoader`: decodes images synchronously off disk (via
 /// `SDL3AssetLoader.loadImage`) and caches the decoded RGBA for synchronous
 /// per-frame lookup. `prefetch` completes immediately on native.
-public final class SDL3AssetCache: AssetLoader {
+public final class SDL3AssetCache: AssetLoader, @unchecked Sendable {
     private var cache: [String: LoadedImage] = [:]
 
     public init() {}
