@@ -68,3 +68,44 @@ private let white = SIMD4<Float>(1, 1, 1, 1)
     #expect(b.vertices.count == 6)
     #expect(b.vertices.allSatisfy { $0.uvBounds == bounds })
 }
+
+@Test func scissorChangeFlushesCommand() {
+    let b = Batcher()
+    b.emitQuad(rect: unit, uv: uv, color: white)
+    b.setScissor(Rect(x: 10, y: 20, width: 100, height: 50))
+    b.emitQuad(rect: unit, uv: uv, color: white)
+    let cmds = b.commands
+    #expect(cmds.count == 2)
+    #expect(cmds[0].state.scissor == nil)
+    #expect(cmds[1].state.scissor == Rect(x: 10, y: 20, width: 100, height: 50))
+}
+
+@Test func viewportChangeFlushesCommand() {
+    let b = Batcher()
+    b.emitQuad(rect: unit, uv: uv, color: white)
+    b.setViewport(Rect(x: 0, y: 0, width: 320, height: 240))
+    b.emitQuad(rect: unit, uv: uv, color: white)
+    let cmds = b.commands
+    #expect(cmds.count == 2)
+    #expect(cmds[1].state.viewport == Rect(x: 0, y: 0, width: 320, height: 240))
+}
+
+@Test func sameScissorMergesIntoOneCommand() {
+    let b = Batcher()
+    let s = Rect(x: 1, y: 2, width: 3, height: 4)
+    b.setScissor(s)
+    b.emitQuad(rect: unit, uv: uv, color: white)
+    b.setScissor(s)
+    b.emitQuad(rect: unit, uv: uv, color: white)
+    #expect(b.commands.count == 1)
+}
+
+@Test func scissorSurvivesLayerSort() {
+    let b = Batcher()
+    let s = Rect(x: 5, y: 5, width: 5, height: 5)
+    b.setLayer(2)
+    b.setScissor(s)
+    b.emitQuad(rect: unit, uv: uv, color: white)
+    let sorted = b.commandsSortedByLayer
+    #expect(sorted.last?.state.scissor == s)
+}

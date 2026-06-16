@@ -4,11 +4,16 @@ public struct DrawCallState: Equatable {
     public var texture: OpaquePointer?
     public var blendMode: BlendMode
     public var layer: Int
+    public var scissor: Rect?       // logical points, target-space; nil = no clip
+    public var viewport: Rect?      // logical points, target-space; nil = full target
 
-    public init(texture: OpaquePointer? = nil, blendMode: BlendMode = .alpha, layer: Int = 0) {
+    public init(texture: OpaquePointer? = nil, blendMode: BlendMode = .alpha, layer: Int = 0,
+                scissor: Rect? = nil, viewport: Rect? = nil) {
         self.texture = texture
         self.blendMode = blendMode
         self.layer = layer
+        self.scissor = scissor
+        self.viewport = viewport
     }
 }
 
@@ -53,6 +58,14 @@ final class Batcher {
 
     public func setLayer(_ l: Int) {
         flushIfChange { $0.layer = l }
+    }
+
+    public func setScissor(_ r: Rect?) {
+        flushIfChange { $0.scissor = r }
+    }
+
+    public func setViewport(_ r: Rect?) {
+        flushIfChange { $0.viewport = r }
     }
 
     public func emitQuad(rect: Rect, uv: Rect, color: SIMD4<Float>,
