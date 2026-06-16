@@ -29,10 +29,11 @@ func runDemo() async throws {
     let vsModule = try await backend.loadShaderModule(url: "shaders/sprite.vert.wgsl")
     let fsModule = try await backend.loadShaderModule(url: "shaders/sprite.frag.wgsl")
 
-    // Vertex layout: locations 0..8 of Bielik2D.Vertex.bufferLayout. The
-    // shader does not consume locations 9..11 (posH, attributes, uvBounds), so
-    // we trim the layout to the bound subset.
-    let attrs = Vertex.bufferLayout.attributes.prefix(9).map { attr -> JSObject in
+    // Vertex layout: the full Bielik2D.Vertex.bufferLayout. The sprite shader
+    // consumes locations 0..8 plus the atlas attributes at 10 (attributes) and
+    // 11 (uvBounds). WebGPU requires every shader-consumed location to be present
+    // in the vertex state; the unused posH at location 9 is harmless to include.
+    let attrs = Vertex.bufferLayout.attributes.map { attr -> JSObject in
         WebJS.object([
             "shaderLocation": .number(Double(attr.location)),
             "offset": .number(Double(attr.offset)),
