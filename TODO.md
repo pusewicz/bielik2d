@@ -128,7 +128,7 @@ direction is the prioritized CF-parity roadmap in Phases 16–21 below.
 - [x] Untextured geometry binds a default white texture at flush (no more demo-side white-texture dance).
 - [x] `Sprite`/`Canvas`/`TextEngine` created via `Renderer`; demo + benchmark drop all hand-rolled GPU plumbing.
 - [x] `Batcher` + SDL GPU wrappers made internal; public surface = App/Renderer/Draw/Canvas/Camera/Sprite/text + geometry types.
-- [~] WebGPU demo ported to `WebRenderer: RenderBackend` — **unverified** (no wasm toolchain locally).
+- [x] WebGPU demo ported to `WebRenderer: RenderBackend` — verified: cross-compiles via the Swift wasm SDK and renders in-browser; the `deploy-web` workflow publishes it to GitHub Pages.
 
 ## Phase 14 — Auto-atlaser (CF-style spritebatch) ✅
 
@@ -271,8 +271,9 @@ Narrower than 16–20 (PNG sheets already ship), so it trails the top 5.
 
 ## Deferred
 
-- Networking (`net`), web/browser (`web`) — single-player, native-first for now; verify the
-  WASI/WebGPU `WebRenderer` port (Phase 13, untested) before any web push.
+- Networking (`net`) — single-player, native-first for now. The web/browser (`web`) WASI/WebGPU
+  `WebRenderer` port is verified and auto-deployed to GitHub Pages; remaining web work is atlas and
+  full scene/demo parity (see Phase-14 follow-ups).
 - `random` / `noise` / broader `math` beyond easing — useful for procedural gen, not on the
   critical path to a first game.
 - Hygiene tail: `.swift-format` config + README screenshots (Phase 12).

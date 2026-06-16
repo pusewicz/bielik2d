@@ -1,0 +1,50 @@
+name: deploy-web
+
+# Build the WebAssembly + WebGPU demo and publish it to GitHub Pages.
+# The web build needs only the Swift wasm SDK — the WGSL shaders and demo PNG
+# are committed, so no Homebrew SDL3 / SDL_shadercross / shader recompile here.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; cancel in-progress runs superseded by newer pushes.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install swift wasm toolchain
+        run: ./scripts/install-wasm-sdk.sh
+
+      - name: build web bundle
+        run: |
+          [ -f "$HOME/.local/share/swiftly/env.sh" ] && . "$HOME/.local/share/swiftly/env.sh"
+          ./scripts/build-web.sh
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

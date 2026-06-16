@@ -33,7 +33,7 @@ These are the modules where Bielik2D and CF actually compete — the engine surf
 | **noise** | ⛔ | Perlin/fBm. Useful for procgen, off critical path. |
 | **random** | ⛔ | Swift stdlib covers basics; CF-style seeded/noise variants deferred. |
 | **net** | ⛔ | Client-server + encryption. Single-player, native-first for now. |
-| **web** | 🟡 | `WebRenderer: RenderBackend` (WASI/WebGPU) port exists but is **unverified** — no wasm toolchain validated locally. |
+| **web** | 🟡 | `WebRenderer: RenderBackend` (WASI/WebGPU) **verified** — `Bielik2DWebDemo` cross-compiles via the Swift wasm SDK and renders (sprite, SDF shapes, text) in-browser; published to GitHub Pages by the `deploy-web` workflow. **Missing:** atlas parity, full scene/demo parity. |
 
 ## Utility modules — ➖ covered by Swift stdlib + Foundation
 

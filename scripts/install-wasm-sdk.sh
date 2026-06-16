@@ -27,14 +27,26 @@ if ! command -v swiftly >/dev/null 2>&1; then
             "$HOME/usr/local/bin/swiftly" init --quiet-shell-followup --assume-yes --no-modify-profile || \
                 "$SWIFTLY_BIN/swiftly" init --quiet-shell-followup --assume-yes --no-modify-profile
             ;;
+        Linux)
+            ARCH="$(uname -m)"
+            curl -fsSLO "https://download.swift.org/swiftly/linux/swiftly-${ARCH}.tar.gz"
+            tar zxf "swiftly-${ARCH}.tar.gz"
+            ./swiftly init --quiet-shell-followup --assume-yes --no-modify-profile --skip-install
+            ;;
         *)
-            echo "automatic swiftly install only wired up for macOS; see https://www.swift.org/swiftly/" >&2
+            echo "automatic swiftly install only wired up for macOS and Linux; see https://www.swift.org/swiftly/" >&2
             exit 1
             ;;
     esac
 else
     echo "==> swiftly already installed"
 fi
+
+# Load swiftly's environment so `swiftly`/`swift` are on PATH for the steps below.
+# Linux's `swiftly init` writes it here; on macOS the installer puts swiftly under
+# $SWIFTLY_BIN (already exported above). Sourcing is harmless if the file is absent.
+# shellcheck disable=SC1091
+[ -f "$HOME/.local/share/swiftly/env.sh" ] && . "$HOME/.local/share/swiftly/env.sh"
 
 # --- 2. Swift toolchain --------------------------------------------------------
 if ! swiftly list 2>/dev/null | grep -q "$SWIFT_VERSION"; then

@@ -21,3 +21,7 @@ vendor/**/build/
 # Sources/Bielik2D/Shaders/*.spv
 vendor/.install
 web/dist/
+
+# Playwright MCP browser-verification scratch (local web-demo testing)
+.playwright-mcp/
+bielik2d-web-*.png
