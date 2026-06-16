@@ -57,6 +57,10 @@ public final class Audio {
         var pan: Float
         var pitch: Float
         var stopped = false
+        /// The `source.onended` handler, held here so it isn't deallocated before
+        /// the node finishes and fires it (single-threaded JS — same retention
+        /// pattern the rest of this module uses for its DOM/promise closures).
+        var onended: JSClosure?
         init(source: JSObject, panner: JSObject, gain: JSObject, volume: Float, pan: Float, pitch: Float) {
             self.source = source
             self.panner = panner
@@ -190,16 +194,44 @@ public final class Audio {
         _ = source.connect?(panner)
         _ = panner.connect?(gain)
         _ = gain.connect?(masterGain)
-        _ = source.start?()
 
-        boxes[id] = VoiceBox(source: source, panner: panner, gain: gain, volume: volume, pan: pan, pitch: pitch)
+        let box = VoiceBox(source: source, panner: panner, gain: gain, volume: volume, pan: pan, pitch: pitch)
+        boxes[id] = box
         if id == currentMusicID { currentMusicID = id }
+
+        // Reclaim the voice when the node finishes: a one-shot (`loop = false`)
+        // fires `onended` when its buffer runs out; a looping voice never finishes
+        // on its own and only fires `onended` once `stopVoice` calls `source.stop()`
+        // (which `stopVoice` has already handled — `reclaim` then no-ops on the
+        // missing/stopped box). Without this, `boxes` would grow unbounded and a
+        // finished one-shot's `isPlaying` would stay true forever, diverging from
+        // native (`Audio.update()` reclaims finished tracks).
+        let onended = JSClosure { [weak self] _ in
+            self?.reclaim(id)
+            return .undefined
+        }
+        box.onended = onended
+        source.onended = .object(onended)
+
+        _ = source.start?()
         return Voice(id: id, audio: self)
     }
 
-    /// No-op on web — voices are reclaimed lazily as they're touched. Kept to
-    /// match the neutral surface (`App.update()` calls it each frame).
+    /// No-op on web — finished voices reclaim themselves via `source.onended`
+    /// (see `reclaim`), so there's nothing to sweep each frame. Kept to match the
+    /// neutral surface (`App.update()` calls it every frame).
     public func update() {}
+
+    /// Drop a finished voice's `VoiceBox` (releasing its retained JS nodes and the
+    /// `onended` closure) and clear `currentMusicID` if it was the music track.
+    /// Fired from `source.onended`. Safe to call when the box is already gone:
+    /// `stopVoice` removes the box up front, so the `onended` that `source.stop()`
+    /// later triggers finds nothing to do — no double-remove.
+    private func reclaim(_ id: UInt64) {
+        guard boxes[id] != nil else { return }
+        boxes[id] = nil
+        if id == currentMusicID { currentMusicID = nil }
+    }
 
     /// Number of live voices — diagnostics.
     var activeCount: Int { boxes.count }
