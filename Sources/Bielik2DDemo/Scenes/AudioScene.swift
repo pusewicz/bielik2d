@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web twin of Sound lives here; native ships it in Bielik2D
+#endif
 import Foundation
 
 /// A procedurally-generated decaying blip with dynamic pitch and stereo pan — no asset file.

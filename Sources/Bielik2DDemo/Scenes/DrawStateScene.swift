@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web `App` lives here; native ships it in Bielik2D
+#endif
 import Foundation
 
 /// pushScissor clips drawing to a rect; pushBlendState(.additive) makes overlaps brighten.

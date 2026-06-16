@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web twin of Sprite lives here; native ships it in Bielik2D
+#endif
 import Foundation
 
 /// One sprite upscaled three ways with a sweeping non-integer factor: nearest shimmers, linear

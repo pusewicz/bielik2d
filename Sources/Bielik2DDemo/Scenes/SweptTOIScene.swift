@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web `App` lives here; native ships it in Bielik2D
+#endif
 
 /// Continuous (tunnel-proof) collision + sliding: a gravity ball slides down a Polygon ramp, along
 /// an AABB floor, into a wall via `move(by:against:)`, then respawns once it comes to rest. The

@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web twins of Sprite/ImageBytes live here; native ships them in Bielik2D
+#endif
 import Foundation
 
 /// Sprite loading + dedup + a frame-stepped generated animation.

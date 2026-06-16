@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web `App` lives here; native ships it in Bielik2D
+#endif
 
 /// Tween keypath target for the flow scene.
 final class Pulser {

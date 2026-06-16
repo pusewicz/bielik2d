@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web `App` lives here; native ships it in Bielik2D
+#endif
 
 /// overlaps + manifold: the mouse cursor is a circle probe against an AABB (turns red on overlap)
 /// and a capsule; a ghost ring shows the manifold push-out (minimum-translation vector).

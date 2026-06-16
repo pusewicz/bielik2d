@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web twin of Sprite lives here; native ships it in Bielik2D
+#endif
 import Foundation
 
 /// Keyboard / mouse / gamepad: a sprite you drive, a mouse-aim dot, and a live stick readout.

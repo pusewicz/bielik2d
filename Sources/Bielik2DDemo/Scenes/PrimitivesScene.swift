@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web `App` lives here; native ships it in Bielik2D
+#endif
 
 /// The base SDF primitives: filled circle, thick line, filled box.
 final class PrimitivesScene: Scene {

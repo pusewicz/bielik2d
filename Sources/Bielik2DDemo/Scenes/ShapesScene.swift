@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web `App` lives here; native ships it in Bielik2D
+#endif
 
 /// Phase-19 shape primitives: outline circle, rounded boxFill, filled + stroked tri, polyline,
 /// poly outline, a shapeAA-smoothed polygon, and a translucent filled convex polygon.

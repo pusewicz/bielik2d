@@ -1,4 +1,7 @@
 import Bielik2D
+#if os(WASI)
+import Bielik2DWeb  // web twin of Canvas lives here; native ships it in Bielik2D
+#endif
 
 /// TTF text plus an offscreen Canvas (render-to-texture): a spinning quad rendered to a 256² canvas
 /// and composited back with pixel-art sampling.
