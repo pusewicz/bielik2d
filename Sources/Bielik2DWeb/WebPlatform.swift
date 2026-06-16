@@ -17,6 +17,10 @@ import JavaScriptKit
 public final class WebPlatform {
     public let canvas: JSObject
     public private(set) var size: SIMD2<Int>
+    /// `devicePixelRatio` captured at `attach`. The canvas `size` is CSS × this, so
+    /// it's the engine's pixel density — what `App` seeds into the ambient Font/Draw
+    /// densities so HiDPI text rasterizes at native resolution.
+    public let pixelDensity: Float
     public private(set) var shouldQuit: Bool = false
 
     /// The engine input the web `App` exposes to scene code — same `Input` class
@@ -37,9 +41,10 @@ public final class WebPlatform {
     // Last canvas-relative mouse position in pixels, so we can compute a delta.
     private var lastMouse: SIMD2<Float>?
 
-    private init(canvas: JSObject, size: SIMD2<Int>) {
+    private init(canvas: JSObject, size: SIMD2<Int>, pixelDensity: Float) {
         self.canvas = canvas
         self.size = size
+        self.pixelDensity = pixelDensity
         installKeyListeners()
         installMouseListeners()
     }
@@ -60,11 +65,18 @@ public final class WebPlatform {
         let h = Int((cssH * dpr).rounded())
         canvas["width"] = JSValue.number(Double(w))
         canvas["height"] = JSValue.number(Double(h))
-        return WebPlatform(canvas: canvas, size: SIMD2(w, h))
+        return WebPlatform(canvas: canvas, size: SIMD2(w, h), pixelDensity: Float(dpr))
     }
 
     /// Drives `body` once per `requestAnimationFrame`. The closure receives
     /// the time delta in seconds since the previous frame.
+    ///
+    /// This schedules the loop only — it does NOT advance input. Per-frame input
+    /// edges (`input.advanceFrame()`) and gamepad polling are the `App.update()`'s
+    /// job now, so a frame advances input exactly once: `body` is the demo's
+    /// `runFrame`, which calls `app.update()` (→ `advanceInput()`) at its top,
+    /// before any scene code reads `pressed`/`released`. Mirrors native, where
+    /// `App.update()` (not the loop) drives input.
     public func run(_ body: @escaping (Double) -> Void) {
         var lastTime: Double = 0
         let global = JSObject.global
@@ -74,8 +86,6 @@ public final class WebPlatform {
             let now = args.first?.number ?? 0
             let dt = lastTime == 0 ? 0 : (now - lastTime) / 1000.0
             lastTime = now
-            self.input.advanceFrame()
-            self.pollGamepads()
             body(dt)
             if !self.shouldQuit, let next = self.rafClosure {
                 _ = global.requestAnimationFrame!(next)
@@ -84,6 +94,16 @@ public final class WebPlatform {
         }
         self.rafClosure = tick
         _ = global.requestAnimationFrame!(tick)
+    }
+
+    /// Advance the per-frame input edges and poll the gamepads — the work the RAF
+    /// tick used to do inline. Called once per frame by `App.update()` so input
+    /// advances exactly once before scene code reads it. Snapshots "previous"
+    /// (`input.advanceFrame()`), then pushes the current gamepad snapshot, exactly
+    /// where `SDL3Platform.pollEvents` sits in the native frame.
+    public func advanceInput() {
+        input.advanceFrame()
+        pollGamepads()
     }
 
     public func requestQuit() {
