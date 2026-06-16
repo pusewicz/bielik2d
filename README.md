@@ -32,7 +32,9 @@ The demo opens a window with a spinning pink quad, a blue filled circle, a yello
 
 ## Web build (experimental)
 
-The `web` branch ships a parallel WebAssembly + WebGPU target. It does not use SDL3 — the platform layer is JavaScriptKit and the renderer is WebGPU through the browser's JS API. Pure-Swift bits (`Draw`, `Batcher`, `Vertex`, `Primitives`, `Camera`, `Mat3x2`) are reused unchanged.
+The same `Bielik2DDemo` — all 11 scenes — runs in the browser on WebAssembly + WebGPU from a single target (no separate web demo). It does not use SDL3: the platform layer is JavaScriptKit and the renderer is WebGPU through the browser's JS API, with a `Web Audio` backend, Canvas2D text, and browser keyboard/mouse/gamepad wired into the engine's `Input`. Pure-Swift bits (`Draw`, `Batcher`, `Vertex`, `Primitives`, `Camera`, `Mat3x2`, scenes) are reused unchanged. All scenes are verified rendering in Chrome with zero WebGPU validation warnings.
+
+It auto-deploys to GitHub Pages via the `deploy-web` workflow (`.github/workflows/deploy-web.yml`) — once deployed, it's served at <https://pusewicz.github.io/bielik2d/>.
 
 One-time setup (installs `swiftly`, the Swift 6.3.1 toolchain, and the wasm SDK; idempotent):
 
@@ -50,11 +52,11 @@ Build and serve in one step:
 Or split the steps for tighter iteration:
 
 ```sh
-./scripts/build-web.sh     # cross-compiles to wasm32 via PackageToJS plugin
+./scripts/build-web.sh --product Bielik2DDemo   # cross-compiles to wasm32 via PackageToJS plugin → web/dist
 python3 -m http.server -d web/dist
 ```
 
-`scripts/start-web.sh` defaults to port 8000 — override with `PORT=9000 ./scripts/start-web.sh`. The demo runs in any WebGPU-capable browser (Chrome / Edge / Safari 18.2+). The web demo shows a sprite, a filled SDF circle, an SDF line, and a "Hello, Bielik!" label — the same scene as the macOS demo. Override `BIELIK2D_WASM_SDK` if `swift sdk list` reports a different SDK id.
+`scripts/start-web.sh` defaults to port 8000 — override with `PORT=9000 ./scripts/start-web.sh`. The demo runs in any WebGPU-capable browser (Chrome / Edge / Safari 18.2+) and is the same 11-scene `Bielik2DDemo` as the native build — switch scenes with the keyboard. Note: audio needs a user gesture (a click or key) before the browser's `AudioContext` produces sound. Override `BIELIK2D_WASM_SDK` if `swift sdk list` reports a different SDK id.
 
 The host HTML uses an import map to resolve the `@bjorn3/browser_wasi_shim` bare specifier the PackageToJS plugin emits — no bundler required, just a static server.
 
@@ -72,9 +74,8 @@ The host HTML uses an import map to resolve the `@bjorn3/browser_wasi_shim` bare
 | `Shaders/wgsl/` | Hand-written WGSL overrides that overlay naga's output |
 | `Sources/CSDL3/` | systemLibrary umbrella for SDL3, SDL3_image, SDL3_ttf |
 | `Sources/CSDL3Shadercross/` | systemLibrary for the vendored shadercross |
-| `Sources/Bielik2DDemo/` | Runnable example (macOS) |
-| `Sources/Bielik2DWeb/` | WebGPU/JavaScriptKit web target |
-| `Sources/Bielik2DWebDemo/` | Runnable example (web, via `scripts/build-web.sh`) |
+| `Sources/Bielik2DDemo/` | Runnable 11-scene example — native (`swift run Bielik2DDemo`) and web (`./scripts/build-web.sh --product Bielik2DDemo`) |
+| `Sources/Bielik2DWeb/` | WebGPU/JavaScriptKit web platform layer (`WebRenderer`, Web Audio, Canvas2D text, input bridge) |
 | `Shaders/src/` | HLSL sources compiled to SPIR-V at build time |
 | `vendor/SDL_shadercross/` | git submodule |
 | `Tests/Bielik2DTests/` | Red-green TDD suite |

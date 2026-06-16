@@ -33,7 +33,7 @@ These are the modules where Bielik2D and CF actually compete — the engine surf
 | **noise** | ⛔ | Perlin/fBm. Useful for procgen, off critical path. |
 | **random** | ⛔ | Swift stdlib covers basics; CF-style seeded/noise variants deferred. |
 | **net** | ⛔ | Client-server + encryption. Single-player, native-first for now. |
-| **web** | 🟡 | `WebRenderer: RenderBackend` (WASI/WebGPU) **verified** — `Bielik2DWebDemo` cross-compiles via the Swift wasm SDK and renders (sprite, SDF shapes, text) in-browser; published to GitHub Pages by the `deploy-web` workflow. **Missing:** atlas parity, full scene/demo parity. |
+| **web** | 🟡 | `WebRenderer: RenderBackend` (WASI/WebGPU) **verified** — the full 11-scene `Bielik2DDemo` (one target, no separate web demo) cross-compiles via the Swift wasm SDK and runs in-browser with renderer/input/audio/text parity: WebGPU pipeline cache (basic+sprite × alpha+additive), scissor + viewport, offscreen render-to-canvas, sprite textures, a cross-platform `Sprite` twin, browser keyboard/mouse/gamepad feeding `Input`, and a Web Audio backend (play/pan/pitch). All 11 scenes verified in Chrome with zero WebGPU validation warnings; published to GitHub Pages by the `deploy-web` workflow. **Missing:** web sprite atlas parity (web uses a simpler per-texture path; the runtime auto-atlaser stays native-only). Minor: Canvas2D text uses a generic sans family, audio needs a user gesture before sound, gamepad is best-effort. |
 
 ## Utility modules — ➖ covered by Swift stdlib + Foundation
 

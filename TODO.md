@@ -128,14 +128,14 @@ direction is the prioritized CF-parity roadmap in Phases 16–21 below.
 - [x] Untextured geometry binds a default white texture at flush (no more demo-side white-texture dance).
 - [x] `Sprite`/`Canvas`/`TextEngine` created via `Renderer`; demo + benchmark drop all hand-rolled GPU plumbing.
 - [x] `Batcher` + SDL GPU wrappers made internal; public surface = App/Renderer/Draw/Canvas/Camera/Sprite/text + geometry types.
-- [x] WebGPU demo ported to `WebRenderer: RenderBackend` — verified: cross-compiles via the Swift wasm SDK and renders in-browser; the `deploy-web` workflow publishes it to GitHub Pages.
+- [x] WebGPU port via `WebRenderer: RenderBackend` — verified: the full 11-scene `Bielik2DDemo` (one target, built for web with `./scripts/build-web.sh --product Bielik2DDemo`) cross-compiles via the Swift wasm SDK and runs in-browser with renderer/input/audio/text parity (pipeline cache, scissor/viewport, offscreen canvas, sprite textures, cross-platform `Sprite`, browser keyboard/mouse/gamepad → `Input`, Web Audio play/pan/pitch). All 11 scenes verified in Chrome with zero validation warnings; the `deploy-web` workflow publishes to GitHub Pages. Remaining gap: web sprite atlas parity (native-only, see Phase-14 follow-ups).
 
 ## Phase 14 — Auto-atlaser (CF-style spritebatch) ✅
 
 CF's online sprite compiler (`cute_spritebatch.h`): push sprites each frame, inject them into rolling
 texture atlases at runtime so draw calls collapse to ~one per page. Textures stay hidden; CPU pixels
 live in RAM so images are packed lazily on first use. Deferred (push → defrag → resolve at flush),
-**no LRU decay yet**. Native-only for now (the web backend keeps its own sprite path).
+**no LRU decay yet**. Native-only for now (the web backend keeps its own simpler per-texture sprite path).
 
 - [x] `SkylinePacker` — pure skyline bottom-left rectangle packer (no GPU).
 - [x] Sub-region texture upload on `CopyPass` (place a small image at x,y within a big atlas page).
@@ -272,8 +272,9 @@ Narrower than 16–20 (PNG sheets already ship), so it trails the top 5.
 ## Deferred
 
 - Networking (`net`) — single-player, native-first for now. The web/browser (`web`) WASI/WebGPU
-  `WebRenderer` port is verified and auto-deployed to GitHub Pages; remaining web work is atlas and
-  full scene/demo parity (see Phase-14 follow-ups).
+  `WebRenderer` port is verified and auto-deployed to GitHub Pages, running the full 11-scene
+  `Bielik2DDemo` from a single target with renderer/input/audio/text parity; the only remaining web
+  work is sprite atlas parity (see Phase-14 follow-ups).
 - `random` / `noise` / broader `math` beyond easing — useful for procedural gen, not on the
   critical path to a first game.
 - Hygiene tail: `.swift-format` config + README screenshots (Phase 12).
