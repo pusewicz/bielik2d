@@ -22,6 +22,7 @@ let scenes: [Scene] = [
     try InputScene(app: app),
     try AudioScene(app: app),
     PrimitivesScene(app: app),
+    ShapesScene(app: app),
 ]
 var current = 0
 
