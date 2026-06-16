@@ -130,7 +130,10 @@ public final class WebRenderer: RenderBackend {
         guard let texture = backend.context.getCurrentTexture!().object,
               let view = texture.createView!().object else { return }
         backend.renderPass(into: view, clear: cc) { pass in
-            self.encodeCommands(list, into: pass, targetW: targetW, targetH: targetH)
+            // Swapchain target is pixel-sized; scene scissor/viewport rects are in
+            // logical points, so scale them by the backing-store DPR (like native).
+            self.encodeCommands(list, into: pass, targetW: targetW, targetH: targetH,
+                                pointScale: backend.pointScale)
         }
     }
 
@@ -219,7 +222,7 @@ public final class WebRenderer: RenderBackend {
     /// Walks the draw list, switching pipeline / scissor / viewport / texture and
     /// issuing one draw per command — the single command loop shared by the
     /// swapchain and offscreen-canvas paths.
-    private func encodeCommands(_ list: DrawList, into pass: JSObject, targetW: Int, targetH: Int) {
+    private func encodeCommands(_ list: DrawList, into pass: JSObject, targetW: Int, targetH: Int, pointScale: Float = 1) {
         let n = list.vertices.count
         guard n > 0, n <= maxVertexCount else { return }
         _ = pass.setBindGroup!(0, cameraBindGroup)
@@ -241,7 +244,7 @@ public final class WebRenderer: RenderBackend {
             // Scissor: nil clears to full target. WebGPU has no "disable", so
             // we reset to the whole target when a command drops its clip.
             if let scissor = c.state.scissor {
-                let s = scissorPixelRect(scissor, scale: 1, targetW: targetW, targetH: targetH)
+                let s = scissorPixelRect(scissor, scale: pointScale, targetW: targetW, targetH: targetH)
                 _ = pass.setScissorRect!(s.x, s.y, s.w, s.h)
                 lastScissorApplied = true
             } else if lastScissorApplied {
@@ -250,7 +253,7 @@ public final class WebRenderer: RenderBackend {
             }
 
             if let viewport = c.state.viewport {
-                let v = viewportPixelRect(viewport, scale: 1, targetW: targetW, targetH: targetH)
+                let v = viewportPixelRect(viewport, scale: pointScale, targetW: targetW, targetH: targetH)
                 _ = pass.setViewport!(Double(v.x), Double(v.y), Double(v.w), Double(v.h), 0.0, 1.0)
                 lastViewportApplied = true
             } else if lastViewportApplied {

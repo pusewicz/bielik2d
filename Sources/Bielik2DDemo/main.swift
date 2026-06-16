@@ -131,7 +131,9 @@ Task { @MainActor in
         font = Font.system(ptSize: 28)
         smallFont = Font.system(ptSize: 18)
         draw = Draw(textEngine: app.makeTextEngine())
-        camera = Camera(viewportSize: SIMD2(Float(app.size.x), Float(app.size.y)))
+        // Web now reports `app.size` as the fixed logical design size (== windowSize),
+        // so the camera matches native: a viewport over the 1280×720 design space.
+        camera = Camera(viewportSize: windowSize)
 
         try buildScenes()
         app.startLoop(runFrame)

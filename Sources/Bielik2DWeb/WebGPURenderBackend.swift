@@ -41,15 +41,21 @@ public final class WebGPURenderBackend {
     /// against these (the swapchain texture matches the configured canvas).
     public let canvasWidth: Int
     public let canvasHeight: Int
+    /// Logical-points → device-pixels factor (the `devicePixelRatio`). Scene
+    /// scissor/viewport rects are authored in the logical design space, so the
+    /// swapchain command loop scales them by this to land in the pixel framebuffer
+    /// — mirroring native, which scales by `Draw.ambientPixelDensity`.
+    public let pointScale: Float
 
     private init(device: JSObject, context: JSObject, queue: JSObject, preferredFormat: String,
-                 canvasWidth: Int, canvasHeight: Int) {
+                 canvasWidth: Int, canvasHeight: Int, pointScale: Float) {
         self.device = device
         self.context = context
         self.queue = queue
         self.preferredFormat = preferredFormat
         self.canvasWidth = canvasWidth
         self.canvasHeight = canvasHeight
+        self.pointScale = pointScale
     }
 
     public static func create(on platform: WebPlatform) async throws -> WebGPURenderBackend {
@@ -94,9 +100,13 @@ public final class WebGPURenderBackend {
         guard let queue = device.queue.object else {
             throw WebGPUError.deviceRequestFailed
         }
+        // The swapchain target is the canvas backing store — the physical pixel
+        // size (`sizeInPixels = design × DPR`), NOT the logical design size. The
+        // WebGPU viewport is set from these, so it must cover the full framebuffer.
         return WebGPURenderBackend(device: device, context: context, queue: queue,
                                    preferredFormat: preferredFormat,
-                                   canvasWidth: platform.size.x, canvasHeight: platform.size.y)
+                                   canvasWidth: platform.sizeInPixels.x, canvasHeight: platform.sizeInPixels.y,
+                                   pointScale: platform.pixelDensity)
     }
 
     /// A 1×1 opaque-white RGBA8 texture, the WebGPU analogue of the native

@@ -28,16 +28,15 @@ public final class App {
     /// True until the loop requests a quit.
     public var isRunning: Bool { !platform.shouldQuit }
 
-    /// Canvas size. On web the canvas is sized in *pixels* (CSS × devicePixelRatio),
-    /// and the web `Camera` and mouse positions were both built from that same
-    /// pixel space (see `WebPlatform.attach` / `canvasPixel`). To keep the camera
-    /// and input agreeing, `size` reports those pixels too — so on web `size` ==
-    /// `sizeInPixels`. (Native differs: there `size` is logical points and
-    /// `sizeInPixels` is the HiDPI-scaled drawable.)
+    /// Logical canvas size in points — the FIXED design size the demo passed to
+    /// `create` (e.g. 1280×720), matching native `App.size`. The web `Camera` and
+    /// mouse positions both live in this logical space (see `WebPlatform.attach` /
+    /// `canvasLogical`), so the camera, `size`, and `mouse.position` all agree.
+    /// DPR lives only in the framebuffer (`sizeInPixels`) and glyph rasterization.
     public var size: SIMD2<Int> { platform.size }
-    /// Physical drawable size in pixels. On web this equals `size` (the canvas is
-    /// already pixel-sized), so HiDPI is folded into both.
-    public var sizeInPixels: SIMD2<Int> { platform.size }
+    /// Physical drawable size in pixels = `size × devicePixelRatio` — the canvas
+    /// backing store the swapchain renders into. (Native: the HiDPI-scaled drawable.)
+    public var sizeInPixels: SIMD2<Int> { platform.sizeInPixels }
     /// Pixels per logical CSS point — the browser's `devicePixelRatio`.
     public var pixelDensity: Float { platform.pixelDensity }
 
@@ -96,11 +95,12 @@ public final class App {
     /// Async factory: builds the platform, GPU backend, renderer, and audio, then
     /// returns a ready `App`. Replaces the native sync `init` — see the type doc.
     public static func create(title: String, width: Int, height: Int) async throws -> App {
-        // `title`/`width`/`height` are part of the shared signature; on web the
-        // canvas is sized by its DOM/CSS box (× devicePixelRatio), so width/height
-        // are advisory and the title isn't shown. We attach to the conventional
-        // "bielik2d" canvas, matching the existing web demo wiring.
-        let platform = try WebPlatform.attach(canvasID: "bielik2d")
+        // `width`/`height` are the FIXED LOGICAL design size (the demo passes
+        // 1280×720): the canvas backing store is sized to `width × DPR` by
+        // `height × DPR` while its CSS box is left to the page stylesheet, so the
+        // engine lays out in this logical space exactly like native. The `title`
+        // isn't shown. We attach to the conventional "bielik2d" canvas.
+        let platform = try WebPlatform.attach(canvasID: "bielik2d", width: width, height: height)
         let renderer = try await makeRenderer(on: platform)
         // Install the web asset loader so `Sprite(path:)` resolves prefetched
         // images; the bootstrap prefetches sprite paths through `app.assetLoader`
@@ -167,7 +167,8 @@ public final class App {
 
     /// Flushes `draw`'s queued geometry to the canvas swapchain and presents, then
     /// resets the queue — the web `cf_app_draw_onto_screen`. `camera` defaults to an
-    /// ortho projection sized to the canvas (in its pixel space).
+    /// ortho projection sized to the LOGICAL design size (`platform.size`), matching
+    /// native; the swapchain viewport scales that to the pixel framebuffer.
     public func drawOntoScreen(_ draw: Draw, clear: Color? = nil, camera: Camera? = nil) {
         let cam = camera ?? Camera(viewportSize: SIMD2(Float(platform.size.x), Float(platform.size.y)))
         draw.flush(through: renderer, camera: cam, clear: clear)

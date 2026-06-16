@@ -43,10 +43,17 @@ public final class WebPlatform {
     private var pendingEvents: [PendingEvent] = []
 
     public let canvas: JSObject
+    /// The LOGICAL design size in points (e.g. 1280×720), matching native `App.size`.
+    /// The camera and mouse both live in this space — the CSS stylesheet visually
+    /// scales the framebuffer to fit the page, and DPR only inflates the backing
+    /// store (`sizeInPixels`). This is the design size the demo passed to `create`.
     public private(set) var size: SIMD2<Int>
-    /// `devicePixelRatio` captured at `attach`. The canvas `size` is CSS × this, so
-    /// it's the engine's pixel density — what `App` seeds into the ambient Font/Draw
-    /// densities so HiDPI text rasterizes at native resolution.
+    /// The canvas backing store in physical pixels = `size × pixelDensity`. This is
+    /// what the WebGPU swapchain renders into; the camera never uses it.
+    public private(set) var sizeInPixels: SIMD2<Int>
+    /// `devicePixelRatio` captured at `attach`. The backing store is `size × this`,
+    /// so it's the engine's pixel density — what `App` seeds into the ambient
+    /// Font/Draw densities so HiDPI text rasterizes at native resolution.
     public let pixelDensity: Float
     public private(set) var shouldQuit: Bool = false
 
@@ -69,15 +76,26 @@ public final class WebPlatform {
     // Last canvas-relative mouse position in pixels, so we can compute a delta.
     private var lastMouse: SIMD2<Float>?
 
-    private init(canvas: JSObject, size: SIMD2<Int>, pixelDensity: Float) {
+    private init(canvas: JSObject, size: SIMD2<Int>, sizeInPixels: SIMD2<Int>, pixelDensity: Float) {
         self.canvas = canvas
         self.size = size
+        self.sizeInPixels = sizeInPixels
         self.pixelDensity = pixelDensity
         installKeyListeners()
         installMouseListeners()
     }
 
-    public static func attach(canvasID: String) throws -> WebPlatform {
+    /// Attach to the `#canvasID` element and size it for a FIXED LOGICAL design of
+    /// `width × height` points (the size the demo lays out at, matching native).
+    ///
+    /// The backing store (`canvas.width`/`height`) is set to `width × DPR` by
+    /// `height × DPR` so HiDPI renders crisp; the canvas's *CSS* box is left to the
+    /// page's stylesheet (`web/index.html` gives the element a responsive `width` +
+    /// `aspect-ratio`), which visually scales that framebuffer to fit the page. We
+    /// deliberately do NOT size the backing store from `getBoundingClientRect`: that
+    /// would make the render resolution follow the CSS box and break the fixed
+    /// design layout on non-1.0 DPR or narrow windows.
+    public static func attach(canvasID: String, width: Int, height: Int) throws -> WebPlatform {
         guard let document = JSObject.global.document.object else {
             throw WebPlatformError.canvasNotFound(canvasID)
         }
@@ -85,15 +103,16 @@ public final class WebPlatform {
             throw WebPlatformError.canvasNotFound(canvasID)
         }
         let dpr = JSObject.global.devicePixelRatio.number ?? 1.0
-        let rectValue = canvas.getBoundingClientRect!()
-        let rect = rectValue.object!
-        let cssW = rect.width.number ?? 0
-        let cssH = rect.height.number ?? 0
-        let w = Int((cssW * dpr).rounded())
-        let h = Int((cssH * dpr).rounded())
-        canvas["width"] = JSValue.number(Double(w))
-        canvas["height"] = JSValue.number(Double(h))
-        return WebPlatform(canvas: canvas, size: SIMD2(w, h), pixelDensity: Float(dpr))
+        let pixelW = Int((Double(width) * dpr).rounded())
+        let pixelH = Int((Double(height) * dpr).rounded())
+        canvas["width"] = JSValue.number(Double(pixelW))
+        canvas["height"] = JSValue.number(Double(pixelH))
+        return WebPlatform(
+            canvas: canvas,
+            size: SIMD2(width, height),
+            sizeInPixels: SIMD2(pixelW, pixelH),
+            pixelDensity: Float(dpr)
+        )
     }
 
     /// Drives `body` once per `requestAnimationFrame`. The closure receives
@@ -192,8 +211,8 @@ public final class WebPlatform {
     private func installMouseListeners() {
         let onMove = JSClosure { [weak self] args in
             guard let self, let event = args.first?.object else { return .undefined }
-            let point = self.canvasPixel(event)
-            // Delta in the engine's pixel space; first move seeds with zero delta.
+            let point = self.canvasLogical(event)
+            // Delta in the engine's logical space; first move seeds with zero delta.
             // `lastMouse` is updated here at capture time so successive queued moves
             // carry the right incremental delta; `Mouse.moved` accumulates them.
             let delta = self.lastMouse.map { point - $0 } ?? .zero
@@ -235,20 +254,25 @@ public final class WebPlatform {
         _ = canvas.addEventListener!("wheel", onWheel)
     }
 
-    /// A `MouseEvent` page position translated into the engine's pixel space:
-    /// canvas-relative (origin top-left, +Y down) then scaled by devicePixelRatio.
-    /// The web camera viewport is built from `size` (CSS × DPR = pixels), so the
-    /// mouse must live in that same pixel space for `Camera.screenToWorld` to land
-    /// on the cursor. (Native differs: there both the camera and SDL motion events
-    /// are in logical points, so native needs no DPR scale.)
-    private func canvasPixel(_ event: JSObject) -> SIMD2<Float> {
-        let dpr = JSObject.global.devicePixelRatio.number ?? 1.0
+    /// A `MouseEvent` page position translated into the engine's LOGICAL design
+    /// space: canvas-relative (origin top-left, +Y down) then mapped from the CSS
+    /// bounding-rect size onto the fixed design size (`size`). The camera viewport
+    /// is also built from `size`, so the mouse lives in the same logical space and
+    /// `Camera.screenToWorld` lands on the cursor at any DPR / CSS scale. The CSS
+    /// box may be any size (the stylesheet scales it responsively); this division
+    /// normalizes the pointer back into design points. (Native is already in
+    /// logical points, so it needs no mapping.)
+    private func canvasLogical(_ event: JSObject) -> SIMD2<Float> {
         let rect = canvas.getBoundingClientRect!().object!
         let left = rect.left.number ?? 0
         let top = rect.top.number ?? 0
+        let rectW = rect.width.number ?? 0
+        let rectH = rect.height.number ?? 0
         let clientX = event["clientX"].number ?? 0
         let clientY = event["clientY"].number ?? 0
-        return SIMD2(Float((clientX - left) * dpr), Float((clientY - top) * dpr))
+        let scaleX = rectW > 0 ? Double(size.x) / rectW : 1
+        let scaleY = rectH > 0 ? Double(size.y) / rectH : 1
+        return SIMD2(Float((clientX - left) * scaleX), Float((clientY - top) * scaleY))
     }
 
     /// Maps a `MouseEvent.button` index to a `MouseButton` (0 left, 1 middle,
