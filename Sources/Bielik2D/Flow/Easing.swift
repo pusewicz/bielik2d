@@ -2,6 +2,10 @@
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(WASILibc)
+import WASILibc
 #endif
 
 /// The Robert Penner easing set, the full slice CF exposes as `cf_ease_*`. Each

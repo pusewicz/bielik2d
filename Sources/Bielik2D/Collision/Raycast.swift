@@ -4,6 +4,17 @@ import simd
 import kvSIMD
 #endif
 
+// Scalar math (`sqrt`); `simd` supplies it on Apple but `kvSIMD` does not.
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(WASILibc)
+import WASILibc
+#endif
+
 extension Ray {
     public func cast(against c: Circle) -> Raycast? {
         let m = origin - c.center

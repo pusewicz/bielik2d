@@ -4,6 +4,17 @@ import simd
 import kvSIMD
 #endif
 
+// Scalar math (`sqrt`); `simd` supplies it on Apple but `kvSIMD` does not.
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(WASILibc)
+import WASILibc
+#endif
+
 // Manifold `normal` points from the query shape (`self`) toward the other shape.
 // Separate by moving `self` by `-normal * depth`. Reverse pairs delegate and negate.
 
