@@ -65,12 +65,11 @@ func runDemo() async throws {
         device: backend.device, layout: cache.textureBindGroupLayout,
         texture: spriteTexture, sampler: sampler)
 
-    // Pre-rasterise the static label into its own texture + bind group.
-    let label = WebTextRasterizer.rasterize("Hello, Bielik!", fontCSS: "32px -apple-system, sans-serif")!
-    let (labelTexture, labelW, labelH) = backend.makeTexture(from: label.canvas)
-    let labelBindGroup = WebRenderer.makeTextureBindGroup(
-        device: backend.device, layout: cache.textureBindGroupLayout,
-        texture: labelTexture, sampler: sampler)
+    // The label now flows through the real web text engine: it rasterizes,
+    // uploads, caches, and emits a textured quad through the shared command loop,
+    // exactly like portable `draw.text(...)` will on the unified demo.
+    let textEngine = WebTextEngine(renderer: webRenderer)
+    let labelFont = Font(family: "-apple-system, sans-serif", ptSize: 32)
 
     let cx = Float(platform.size.x) * 0.5
     let cy = Float(platform.size.y) * 0.5
@@ -86,7 +85,7 @@ func runDemo() async throws {
     // command loop — no special-cased draw path.
     let mainDraw = Draw()
     mainDraw.reserveVertexCapacity(maxVertexCount)
-    let labelDraw = Draw()
+    let labelDraw = Draw(textEngine: textEngine)
 
     platform.run { _ in
         // Sprite (textured quad).
@@ -104,13 +103,11 @@ func runDemo() async throws {
         webRenderer.defaultTextureBindGroup = spriteBindGroup
         mainDraw.flush(through: webRenderer, camera: camera, clear: Color(r: 0.10, g: 0.12, b: 0.18))
 
-        // Label, drawn over the cleared frame (no clear this pass).
-        labelDraw.quad(
-            rect: Rect(x: labelOrigin.x, y: labelOrigin.y,
-                       width: Float(labelW), height: Float(labelH)),
-            uv: Rect(x: 0, y: 0, width: 1, height: 1), color: white
-        )
-        webRenderer.defaultTextureBindGroup = labelBindGroup
+        // Label, drawn over the cleared frame (no clear this pass). Goes through
+        // the real web text engine: the glyph quad carries its own texture token,
+        // so the command loop binds the rasterized texture (the default binding is
+        // only the fallback for untextured commands).
+        labelDraw.text("Hello, Bielik!", font: labelFont, at: labelOrigin, color: .white)
         labelDraw.flush(through: webRenderer, camera: camera, clear: nil)
     }
 }

@@ -85,11 +85,32 @@ public final class Draw {
 
     public var currentLayer: Int { layers.peek }
 
+    // MARK: - Texture binding (forwards to batcher state)
+
+    /// Binds `token` as the texture for subsequent batched geometry, flushing the
+    /// current run if it differs. `nil` reverts to untextured. The token is an
+    /// opaque key a render backend maps to a real texture (native: the SDL
+    /// texture handle; web: a renderer-registered glyph/canvas texture). Mirrors
+    /// the same-module `batcher.setTexture` call the native `Draw.canvas` uses, so
+    /// out-of-module code (the web text engine, the web canvas) can bind too.
+    public func setBatcherTexture(_ token: OpaquePointer?) {
+        batcher.setTexture(token)
+    }
+
     // MARK: - Queue lifecycle
+
+    /// A read-only snapshot of this frame's queued geometry, layer-sorted. Lets a
+    /// render backend in another module consume the queue without touching the
+    /// internal `Batcher` (the native `Renderer`, same module, reads it directly).
+    public func drawList() -> DrawList {
+        DrawList(vertices: batcher.vertices,
+                 commands: batcher.commandsSortedByLayer,
+                 spriteInstances: spriteInstances)
+    }
 
     /// Clears everything queued this frame (immediate geometry + deferred sprites).
     /// A flush calls this after handing the queue to a backend.
-    func clearQueue() {
+    public func clearQueue() {
         batcher.reset()
         spriteInstances.removeAll(keepingCapacity: true)
     }
