@@ -4,8 +4,8 @@ let windowSize = SIMD2<Float>(1280, 720)
 let app = try App(title: "Bielik2D Demo", width: Int(windowSize.x), height: Int(windowSize.y))
 print("GPU driver: \(app.driverName)")
 
-let font = try Font(path: "/System/Library/Fonts/Geneva.ttf", ptSize: 28)
-let smallFont = try Font(path: "/System/Library/Fonts/Geneva.ttf", ptSize: 18)
+let font = try Font.system(ptSize: 28)
+let smallFont = try Font.system(ptSize: 18)
 let draw = Draw(textEngine: try app.renderer.makeTextEngine())
 let camera = Camera(viewportSize: windowSize)
 
