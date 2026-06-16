@@ -24,6 +24,7 @@ let scenes: [Scene] = [
     PrimitivesScene(app: app),
     ShapesScene(app: app),
     try TextCanvasScene(app: app),
+    FlowScene(app: app),
 ]
 var current = 0
 
