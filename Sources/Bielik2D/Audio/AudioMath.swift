@@ -15,4 +15,20 @@ enum AudioMath {
     static func effectiveGain(volume: Float, master: Float) -> Float {
         max(0, volume) * max(0, master)
     }
+
+    /// Smallest pitch we ever apply: web `AudioBufferSourceNode.playbackRate`
+    /// must be > 0, so we floor here rather than allow zero (a stalled source).
+    static let minPitch: Float = 0.0001
+
+    /// Clamp a pan value into the neutral -1...1 range (-1 hard left, +1 hard
+    /// right). Shared by both audio backends.
+    static func clampPan(_ pan: Float) -> Float {
+        max(-1, min(1, pan))
+    }
+
+    /// Clamp a pitch (playback-rate) value to a strictly-positive floor so it is
+    /// never <= 0. Shared by both audio backends.
+    static func clampPitch(_ pitch: Float) -> Float {
+        max(minPitch, pitch)
+    }
 }
