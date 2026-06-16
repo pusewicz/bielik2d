@@ -36,12 +36,19 @@ public final class WebGPURenderBackend {
     public let context: JSObject
     public let queue: JSObject
     public let preferredFormat: String
+    /// Drawable size in device pixels — the scissor/viewport command loop clamps
+    /// against these (the swapchain texture matches the configured canvas).
+    public let canvasWidth: Int
+    public let canvasHeight: Int
 
-    private init(device: JSObject, context: JSObject, queue: JSObject, preferredFormat: String) {
+    private init(device: JSObject, context: JSObject, queue: JSObject, preferredFormat: String,
+                 canvasWidth: Int, canvasHeight: Int) {
         self.device = device
         self.context = context
         self.queue = queue
         self.preferredFormat = preferredFormat
+        self.canvasWidth = canvasWidth
+        self.canvasHeight = canvasHeight
     }
 
     public static func create(on platform: WebPlatform) async throws -> WebGPURenderBackend {
@@ -86,27 +93,55 @@ public final class WebGPURenderBackend {
         guard let queue = device.queue.object else {
             throw WebGPUError.deviceRequestFailed
         }
-        return WebGPURenderBackend(device: device, context: context, queue: queue, preferredFormat: preferredFormat)
+        return WebGPURenderBackend(device: device, context: context, queue: queue,
+                                   preferredFormat: preferredFormat,
+                                   canvasWidth: platform.size.x, canvasHeight: platform.size.y)
+    }
+
+    /// A 1×1 opaque-white RGBA8 texture, the WebGPU analogue of the native
+    /// renderer's white pixel. Bound for untextured / SDF commands so their
+    /// shader samples 1.0 (and the shape branch ignores the texture entirely).
+    public func makeWhitePixelTexture() -> JSObject {
+        let texture = device.createTexture!(WebJS.object([
+            "size": .object(WebJS.object([
+                "width": .number(1), "height": .number(1), "depthOrArrayLayers": .number(1),
+            ])),
+            "format": .string("rgba8unorm"),
+            "usage": .number(Double(GPUTextureUsage.textureBinding | GPUTextureUsage.copyDst)),
+        ])).object!
+        let px = JSTypedArray<UInt8>([0xFF, 0xFF, 0xFF, 0xFF])
+        _ = queue.writeTexture!(
+            WebJS.object(["texture": .object(texture)]),
+            px.jsObject,
+            WebJS.object(["bytesPerRow": .number(4), "rowsPerImage": .number(1)]),
+            WebJS.object(["width": .number(1), "height": .number(1)])
+        )
+        return texture
     }
 
     /// Runs a single frame: begins a render pass with the given clear colour,
     /// calls `render` so the caller can bind pipelines, buffers, bind groups
     /// and issue draw calls, then submits the encoded command buffer.
-    public func frame(clear: ClearColor, render: (JSObject) -> Void = { _ in }) {
+    public func frame(clear: ClearColor?, render: (JSObject) -> Void = { _ in }) {
         guard let texture = context.getCurrentTexture!().object,
               let view = texture.createView!().object else { return }
 
-        let colorAttachment = newObject([
+        // nil clear -> load the existing contents (so a second pass composites
+        // over the first this frame), matching the native `clear: nil` path.
+        var attachmentPairs: [String: JSValue] = [
             "view": .object(view),
-            "loadOp": .string("clear"),
+            "loadOp": .string(clear == nil ? "load" : "clear"),
             "storeOp": .string("store"),
-            "clearValue": .object(newObject([
+        ]
+        if let clear {
+            attachmentPairs["clearValue"] = .object(newObject([
                 "r": .number(clear.r),
                 "g": .number(clear.g),
                 "b": .number(clear.b),
                 "a": .number(clear.a),
-            ])),
-        ])
+            ]))
+        }
+        let colorAttachment = newObject(attachmentPairs)
         let attachments = JSObject.global.Array.function!.new(colorAttachment)
         let descriptor = newObject([
             "colorAttachments": .object(attachments),
