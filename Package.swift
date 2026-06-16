@@ -72,7 +72,12 @@ let package = Package(
         ),
         .executableTarget(
             name: "Bielik2DDemo",
-            dependencies: ["Bielik2D"],
+            dependencies: [
+                "Bielik2D",
+                .target(name: "Bielik2DWeb", condition: .when(platforms: [.wasi])),
+                .product(name: "JavaScriptKit", package: "JavaScriptKit", condition: .when(platforms: [.wasi])),
+                .product(name: "JavaScriptEventLoop", package: "JavaScriptKit", condition: .when(platforms: [.wasi])),
+            ],
             resources: [.copy("assets")],
             linkerSettings: nativeLibPaths
         ),
@@ -81,10 +86,6 @@ let package = Package(
             dependencies: ["Bielik2D"],
             resources: [.copy("assets")],
             linkerSettings: nativeLibPaths
-        ),
-        .executableTarget(
-            name: "Bielik2DWebDemo",
-            dependencies: ["Bielik2DWeb"]
         ),
     ]
 )
