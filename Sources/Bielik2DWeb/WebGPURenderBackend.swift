@@ -1,6 +1,7 @@
 #if os(WASI)
 import JavaScriptKit
 import JavaScriptEventLoop
+import Bielik2D
 
 public enum WebGPUError: Error, CustomStringConvertible {
     case unsupported
@@ -223,6 +224,39 @@ public final class WebGPURenderBackend {
         _ = queue.copyExternalImageToTexture!(
             WebJS.object(["source": .object(bitmap)]),
             WebJS.object(["texture": .object(texture)]),
+            WebJS.object([
+                "width": .number(Double(width)),
+                "height": .number(Double(height)),
+            ])
+        )
+        return (texture, width, height)
+    }
+
+    /// Builds a sampled RGBA8 texture from already-decoded `LoadedImage` bytes
+    /// (the async `AssetLoader` seam's output), uploading `rgba` with
+    /// `queue.writeTexture` (bytesPerRow = width*4). Usage is textureBinding |
+    /// copyDst — enough to sample, no render-attachment needed. Returns
+    /// `(texture, width, height)`, mirroring `makeTexture(from bitmap:)`.
+    public func makeTexture(from loaded: LoadedImage) -> (JSObject, Int, Int) {
+        let width = loaded.width
+        let height = loaded.height
+        let texture = device.createTexture!(WebJS.object([
+            "size": .object(WebJS.object([
+                "width": .number(Double(width)),
+                "height": .number(Double(height)),
+                "depthOrArrayLayers": .number(1),
+            ])),
+            "format": .string("rgba8unorm"),
+            "usage": .number(Double(GPUTextureUsage.textureBinding | GPUTextureUsage.copyDst)),
+        ])).object!
+        let pixels = JSTypedArray<UInt8>(loaded.rgba)
+        _ = queue.writeTexture!(
+            WebJS.object(["texture": .object(texture)]),
+            pixels.jsObject,
+            WebJS.object([
+                "bytesPerRow": .number(Double(width * 4)),
+                "rowsPerImage": .number(Double(height)),
+            ]),
             WebJS.object([
                 "width": .number(Double(width)),
                 "height": .number(Double(height)),

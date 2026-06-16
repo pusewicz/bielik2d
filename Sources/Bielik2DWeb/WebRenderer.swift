@@ -30,10 +30,15 @@ public final class WebRenderer: RenderBackend {
     /// pointer is a stable token the caller maps to a real WebGPU texture.
     private var textureBindGroups: [UInt: JSObject] = [:]
 
-    /// Backing storage for `makeCanvas` tokens — each canvas's process-unique
-    /// `OpaquePointer` is the address of one of these heap cells, kept alive for
-    /// the renderer's lifetime so the registered bind group stays valid.
+    /// Backing storage for `makeCanvas` / `makeSprite` tokens — each one's
+    /// process-unique `OpaquePointer` is the address of a heap cell, kept alive
+    /// for the renderer's lifetime so the registered bind group stays valid.
     private var canvasTokenStorage: [UnsafeMutableRawPointer] = []
+
+    /// Sprite textures keyed by asset path, so `makeSprite(path:from:)` dedups
+    /// repeat loads of the same image (the web twin of `SpriteRegistry`'s
+    /// path cache) — the same `WebSprite` token is reused.
+    private var spritesByPath: [String: WebSprite] = [:]
 
     /// Bound when a command carries no texture. Defaults to the white pixel;
     /// the minimal demo points it at its sprite PNG so its untextured quad still
@@ -145,6 +150,33 @@ public final class WebRenderer: RenderBackend {
         let token = OpaquePointer(cell)
         registerTexture(token, texture: texture)
         return WebCanvas(texture: texture, token: token, width: width, height: height)
+    }
+
+    // MARK: - Sprite textures
+
+    /// Uploads a decoded `LoadedImage` (from the async `AssetLoader` seam) into a
+    /// sampled WebGPU texture, registers it under a fresh stable token, and hands
+    /// back a `WebSprite` carrying that token + the image size — enough for
+    /// `Draw.sprite(_:at:)` to bind it and emit a textured quad. The texture-token
+    /// mechanism is the same one glyph and canvas textures use.
+    public func makeSprite(from loaded: LoadedImage) -> WebSprite {
+        let (texture, w, h) = backend.makeTexture(from: loaded)
+        let cell = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
+        canvasTokenStorage.append(cell)
+        let token = OpaquePointer(cell)
+        registerTexture(token, texture: texture)
+        return WebSprite(texture: texture, token: token, width: w, height: h)
+    }
+
+    /// Path-deduped `makeSprite(from:)`: the first call for `path` uploads and
+    /// caches; later calls return the same `WebSprite`. The integration phase
+    /// prefetches a `LoadedImage` via `WebAssetLoader` and passes it here, so a
+    /// scene asking for the same asset twice reuses one texture/token.
+    public func makeSprite(path: String, from loaded: LoadedImage) -> WebSprite {
+        if let existing = spritesByPath[path] { return existing }
+        let sprite = makeSprite(from: loaded)
+        spritesByPath[path] = sprite
+        return sprite
     }
 
     // MARK: - Shared frame plumbing
