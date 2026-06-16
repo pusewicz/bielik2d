@@ -33,6 +33,16 @@ struct RenderPass {
     public func draw(vertexCount: Int, firstVertex: Int = 0, instanceCount: Int = 1) {
         SDL_DrawGPUPrimitives(handle, UInt32(vertexCount), UInt32(instanceCount), UInt32(firstVertex), 0)
     }
+
+    public func setScissor(x: Int, y: Int, width: Int, height: Int) {
+        var r = SDL_Rect(x: Int32(x), y: Int32(y), w: Int32(width), h: Int32(height))
+        SDL_SetGPUScissor(handle, &r)
+    }
+
+    public func setViewport(x: Float, y: Float, width: Float, height: Float) {
+        var vp = SDL_GPUViewport(x: x, y: y, w: width, h: height, min_depth: 0, max_depth: 1)
+        SDL_SetGPUViewport(handle, &vp)
+    }
 }
 
 extension CommandBuffer {
