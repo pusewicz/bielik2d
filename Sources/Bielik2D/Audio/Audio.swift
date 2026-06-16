@@ -8,6 +8,32 @@ import Foundation
 ///
 /// Tracks are created per `play` and reclaimed by `update()` once they finish, so
 /// the app loop must call `update()` each frame (`App.update()` does this).
+///
+/// ## Platform-neutral surface
+/// This SDL3_mixer implementation is the native (`#if canImport(CSDL3)`) half of a
+/// twin type; a web (`#if os(WASI)`) twin must mirror the same public API so scene
+/// code stays identical across platforms. The neutral contract is, exactly:
+/// - `init() throws` — open the default playback device.
+/// - `static var current: Audio?` — ambient mixer `App` installs.
+/// - `var masterVolume: Float` — global volume folded into every track.
+/// - `func makeSound(path: String) throws -> Sound`
+/// - `func makeSound(bytes: Data) throws -> Sound`
+/// - `func makeMusic(path: String) throws -> Music`
+/// - `func makeMusic(bytes: Data) throws -> Music`
+/// - `@discardableResult func play(_ sound: Sound, volume: Float = 1, pan: Float = 0,
+///   pitch: Float = 1, loops: Int = 0) -> Voice`
+/// - `@discardableResult func playMusic(_ music: Music, volume: Float = 1,
+///   loops: Int = -1, fadeIn: Double = 0) -> Voice`
+/// - `@discardableResult func crossfade(to music: Music, over seconds: Double,
+///   volume: Float = 1, loops: Int = -1) -> Voice`
+/// - `func update()` — reclaim finished tracks; call once per frame.
+/// - `func destroy()`
+///
+/// Plus the companion neutral types `Sound`, `Music`, `Voice`, and `AudioError`,
+/// and the ambient overloads `Sound(path:)` / `sound.play(...)` and
+/// `Music(path:)`. Backing storage (the `MIX_*` opaque pointers, `mixer`,
+/// `Sound.handle`) is `internal` and is not part of the neutral surface — the web
+/// twin substitutes its own.
 public final class Audio {
     /// The ambient mixer `App` installs so `Sound(path:)` and `sound.play()`
     /// resolve without an explicit handle. Last app created wins.
