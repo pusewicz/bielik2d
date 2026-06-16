@@ -14,6 +14,7 @@ public enum ShapeType: Float {
     case box = 3
     case capsule = 4
     case triangle = 5
+    case convexPoly = 6
 }
 
 extension Draw {
@@ -205,11 +206,68 @@ extension Draw {
         }
     }
 
-    /// Polygon outline: a closed `polyline` of `stroke` thickness. (Filled convex
-    /// polygons are a deferred follow-up.)
+    /// Polygon outline: a closed `polyline` of `stroke` thickness. For a solid
+    /// interior use `polyFill`.
     public func poly(_ points: [SIMD2<Float>], stroke: Float,
                      color: Color = .white, aa: Float? = nil) {
         polyline(points, thickness: stroke, closed: true, color: color, aa: aa)
+    }
+
+    /// Filled **convex** polygon with antialiased edges. Triangulated as a fan
+    /// around the centroid — one triangle per edge — so adjacent triangles share
+    /// the spoke-to-centroid vertices exactly and the interior is seamless. Each
+    /// triangle carries its true outer edge; the fragment shader antialiases only
+    /// that edge (the interior spokes get no fringe). Rim vertices are pushed out
+    /// along mitred bisectors by `aa` so the AA fringe has geometric room while the
+    /// SDF still measures distance to the unexpanded edge. Non-convex input renders
+    /// as if it were its convex outline.
+    public func polyFill(_ points: [SIMD2<Float>], color: Color = .white, aa: Float? = nil) {
+        guard points.count >= 3 else { return }
+        let aa = aa ?? currentShapeAA
+        let n = points.count
+        // Centroid-local frame: the centroid maps to uv (0,0) and is the fan apex.
+        var centroid = SIMD2<Float>.zero
+        for p in points { centroid += p }
+        centroid /= Float(n)
+        let local = points.map { $0 - centroid }
+
+        // Outward edge normal (a→b) — flipped to point away from the centroid (origin).
+        func outwardNormal(_ a: SIMD2<Float>, _ b: SIMD2<Float>) -> SIMD2<Float> {
+            let e = b - a
+            var nrm = simd_normalize(SIMD2<Float>(e.y, -e.x))
+            if simd_dot(nrm, (a + b) * 0.5) < 0 { nrm = -nrm }
+            return nrm
+        }
+        // Expand each rim vertex along its mitred bisector by `aa` (miter clamped to 4×).
+        var expanded = [SIMD2<Float>](repeating: .zero, count: n)
+        for i in 0..<n {
+            let nPrev = outwardNormal(local[(i + n - 1) % n], local[i])
+            let nNext = outwardNormal(local[i], local[(i + 1) % n])
+            let sum = nPrev + nNext
+            let len = simd_length(sum)
+            let bisector = len > 1e-6 ? sum / len : nNext
+            let miter = aa / max(simd_dot(bisector, nNext), 0.25)
+            expanded[i] = local[i] + bisector * miter
+        }
+
+        let tint = currentColor
+        let modulated = SIMD4<Float>(color.r * tint.r, color.g * tint.g,
+                                     color.b * tint.b, color.a * tint.a)
+        let t = currentTransform
+        // One fan triangle per edge: apex = centroid, rim = expanded edge endpoints.
+        // uv is the centroid-local position; attributes carry the TRUE edge (a, b).
+        func vert(_ localPos: SIMD2<Float>, edgeA: SIMD2<Float>, edgeB: SIMD2<Float>) -> Vertex {
+            Vertex(pos: t.transform(centroid + localPos), uv: localPos, color: modulated,
+                   radius: 0, stroke: 0, aa: aa, type: ShapeType.convexPoly.rawValue,
+                   alpha: 1, fill: 1,
+                   attributes: SIMD4<Float>(edgeA.x, edgeA.y, edgeB.x, edgeB.y))
+        }
+        for i in 0..<n {
+            let a = local[i], b = local[(i + 1) % n]
+            batcher.append(vert(.zero, edgeA: a, edgeB: b))
+            batcher.append(vert(expanded[i], edgeA: a, edgeB: b))
+            batcher.append(vert(expanded[(i + 1) % n], edgeA: a, edgeB: b))
+        }
     }
 
     /// Triangle outline of the given `stroke` thickness (round joins via `polyline`).

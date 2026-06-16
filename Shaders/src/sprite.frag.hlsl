@@ -150,6 +150,20 @@ float4 main(PSInput input) : SV_Target {
         float al = smoothstep(input.aa, -input.aa, dist);
         return float4(input.color.rgb, input.color.a * al);
     }
+    if (t == 6) {
+        // convex polygon fill: one centroid-fan triangle per edge. scaleData.xy/zw
+        // carry the triangle's true outer edge (A, B) in centroid-local coords; uv
+        // is the fragment's centroid-local position. We antialias only that edge —
+        // distance to its half-plane, oriented so the centroid (origin) is inside —
+        // so the interior spokes shared between fan triangles get no fringe.
+        float2 ea = input.scaleData.xy;
+        float2 eb = input.scaleData.zw;
+        float2 nrm = normalize(float2((eb - ea).y, -(eb - ea).x));
+        if (dot(-ea, nrm) > 0.0) nrm = -nrm;   // make the origin side negative (inside)
+        float dist = dot(input.uv - ea, nrm);
+        float a = smoothstep(input.aa, -input.aa, dist);
+        return float4(input.color.rgb, input.color.a * a);
+    }
     // unknown type -> render solid color for visibility
     return input.color;
 }

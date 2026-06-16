@@ -149,5 +149,19 @@ fn main(in: FragInput) -> @location(0) vec4<f32> {
         let al = smoothstep(in.aa, -in.aa, dist);
         return vec4<f32>(in.color.rgb, in.color.a * al);
     }
+    if (t == 6) {
+        // convex polygon fill: one centroid-fan triangle per edge. scaleData.xy/zw
+        // carry the triangle's true outer edge (A, B) in centroid-local coords; uv
+        // is the fragment's centroid-local position. Antialias only that edge —
+        // distance to its half-plane, oriented so the centroid (origin) is inside.
+        let ea = in.scaleData.xy;
+        let eb = in.scaleData.zw;
+        let e = eb - ea;
+        var nrm = normalize(vec2<f32>(e.y, -e.x));
+        if (dot(-ea, nrm) > 0.0) { nrm = -nrm; }   // origin side negative (inside)
+        let dist = dot(in.uv - ea, nrm);
+        let a = smoothstep(in.aa, -in.aa, dist);
+        return vec4<f32>(in.color.rgb, in.color.a * a);
+    }
     return in.color;
 }

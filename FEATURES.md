@@ -17,7 +17,7 @@ These are the modules where Bielik2D and CF actually compete — the engine surf
 |---|---|---|
 | **app** | ✅ | `App(title:width:height:)`, `isRunning`/`update`/`destroy`, window + GPU device, present-mode control, drawable pixel size + density. |
 | **graphics** | ✅ | Low-level GPU (pipelines, buffers, textures, samplers, passes) wrapped and hidden behind `Renderer`; HLSL→SPIR-V→MSL via shadercross. Public surface stays CF-style high-level. |
-| **draw** | 🟡 | `quad`/`sprite`/`canvas`; SDF `circleFill`, outline `circle`, `line`, `box`/`boxFill` (rounded + stroked), `capsule`, filled + outlined `tri`, `polyline`, polygon outline `poly`. Scoped state via `with{}` + `pushTransform`/`pushColor`/`pushLayer`/`pushScaleMode`/`pushShapeAA`/`pushScissor`/`pushViewport`/`pushBlendState`. **Missing:** filled convex `poly`. (Phase 19 remaining slices) |
+| **draw** | ✅ | `quad`/`sprite`/`canvas`; SDF `circleFill`, outline `circle`, `line`, `box`/`boxFill` (rounded + stroked), `capsule`, filled + outlined `tri`, `polyline`, polygon outline `poly`, filled convex `polyFill` (centroid-fan single-edge SDF, AA). Scoped state via `with{}` + `pushTransform`/`pushColor`/`pushLayer`/`pushScaleMode`/`pushShapeAA`/`pushScissor`/`pushViewport`/`pushBlendState`. (Phase 19) |
 | **sprite** | ✅ | `Sprite(path:)` with dedup via shared registry; animation model (loop/once/pingPong), `update`/`play`/`pause`/`resume`, runtime auto-atlaser packing into rolling 2048² pages (~one draw call per page). |
 | **custom_sprite** | ✅ | In-memory sheets via `makeSprite(sheet:frameWidth:frameHeight:fps:)` and grid slicing; no Aseprite yet (Phase 21). |
 | **audio** | ✅ | `Sound`/`Music`/`Voice` over SDL3_mixer; gain, stereo pan, dynamic pitch, fades, `crossfade(to:over:)`, master volume, ambient `Audio.current`. **Deferred:** voice pause/resume, category buses, 3D positional. |
@@ -48,22 +48,21 @@ CF ships these because it's a C framework. In Swift they're not gaps and won't b
 
 | Status | Count | Modules |
 |---|---|---|
-| ✅ shipped | 7 | app, graphics, sprite, custom_sprite, audio, time, coroutine |
-| 🟡 partial | 7 | draw, input, math, text, image, web, collision |
+| ✅ shipped | 8 | app, graphics, sprite, custom_sprite, audio, time, coroutine, draw |
+| 🟡 partial | 6 | input, math, text, image, web, collision |
 | ⏳ planned | 1 | binding |
 | ⛔ deferred | 4 | haptic, noise, random, net |
 | ➖ stdlib | 13 | allocator, array, atomic, base64, CPU, file, json, list, map, multithreading, path, string, utility |
 
 **Where we stand:** the rendering core is solid and the two biggest post-v0 enablers (input, audio)
 have landed. The engine can already put an animated, batched, HiDPI-crisp sprite scene on screen
-with sound and full input, and now drive game-logic flow with tweens and coroutines. What's still
-missing for shipping an actual game is **gameplay**: collision and richer draw primitives.
+with sound and full input, and now drive game-logic flow with tweens and coroutines. The draw API is
+feature-complete; what's still missing for shipping an actual game is rounding out **collision**.
 
 ## What to build next
 
 Collision (Phase 18, now including continuous swept TOI + move-and-slide), coroutines/tweening
-(Phase 20), and Phase 19's shape primitives have shipped; the remaining top gap:
+(Phase 20), and Phase 19's draw primitives (now complete, including filled convex `polyFill`) have
+shipped; the remaining top gap:
 
-1. **Draw completeness (Phase 19, remaining slices)** — shape primitives and the draw-state stacks
-   (`pushScissor`/`pushViewport`/`pushBlendState`) have landed; still to do are text effects (color
-   markup, outline, shadow) and filled convex `poly`.
+1. **Text effects (Phase 19)** — the `text` module still lacks color markup, outline, and shadow.

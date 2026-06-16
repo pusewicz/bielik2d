@@ -1,10 +1,10 @@
 import Bielik2D
 
 /// Phase-19 shape primitives: outline circle, rounded boxFill, filled + stroked tri, polyline,
-/// poly outline, and a shapeAA-smoothed polygon.
+/// poly outline, a shapeAA-smoothed polygon, and a translucent filled convex polygon.
 final class ShapesScene: Scene {
     let name = "Shapes (Phase 19)"
-    let summary = "Outline circle, rounded boxFill, filled + stroked tri, polyline, poly, shapeAA"
+    let summary = "Outline circle, rounded boxFill, filled + stroked tri, polyline, poly, polyFill, shapeAA"
     let controls = ""
 
     init(app: App) {}
@@ -28,5 +28,10 @@ final class ShapesScene: Scene {
                     SIMD2(cx + 270, y + 36), SIMD2(cx + 220, y + 24)],
                    stroke: 3, color: Color(r: 0.8, g: 0.7, b: 1.0))
         }
+        // Translucent filled convex hexagon — AA edges with no double-blended seams.
+        let hx = cx + 360
+        d.polyFill([SIMD2(hx + 32, y), SIMD2(hx + 16, y - 30), SIMD2(hx - 16, y - 30),
+                    SIMD2(hx - 32, y), SIMD2(hx - 16, y + 30), SIMD2(hx + 16, y + 30)],
+                   color: Color(r: 0.4, g: 0.85, b: 1.0, a: 0.8))
     }
 }

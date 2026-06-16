@@ -82,11 +82,13 @@ direction is the prioritized CF-parity roadmap in Phases 16–21 below.
 - [x] `4x4.png` fixture + `SpriteTests`.
 - [x] `Sprite(png:)` (now `renderer.makeSprite(png:)`), `Draw.sprite(_:)`.
 
-## Phase 8 — SDF primitives 🟡
+## Phase 8 — SDF primitives ✅
 
 - [x] `circleFill`, `line`, `box` (`PrimitivesTests`).
 - [x] outline `circle`, `boxFill` (rounded), `capsule`, `polyline`, `tri` (filled + outline), `poly`
-      outline (`PrimitivesTests`). Filled convex `poly` deferred.
+      outline (`PrimitivesTests`).
+- [x] filled convex `polyFill` — centroid-fan single-edge SDF (`convexPoly` shader branch),
+      mitred-bisector AA expansion (`PrimitivesTests`).
 
 ## Phase 9 — Canvases (render-to-texture) ✅
 
@@ -229,8 +231,9 @@ Half-built already (Phases 6/8), high return per effort, supports collision debu
 
 - [x] SDF primitives: outline `circle`, `boxFill`, `capsule`, `polyline`, `tri` (filled + outline),
       polygon outline `poly`, rounded box, and ambient `pushShapeAA` — extend `Draw/Primitives.swift`
-      + the unified SDF shader (`triangle` branch; `circle` gains a stroked path). Filled convex
-      `poly` deferred (needs a convex-poly SDF / vertex-layout rework).
+      + the unified SDF shader (`triangle` branch; `circle` gains a stroked path).
+- [x] Filled convex `polyFill` — centroid-fan single-edge `convexPoly` SDF branch with mitred-bisector
+      AA expansion (no vertex-layout rework needed).
 - [x] Draw-state stacks `pushScissor` / `pushViewport` / `pushBlendState` (reuse the generic
       `StateStack<T>`; per-command state applied at flush — scissor/viewport in logical points
       scaled to target pixels, blend selects the pipeline).

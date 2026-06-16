@@ -122,6 +122,51 @@ import Testing
     #expect(b.vertices.allSatisfy { $0.type == ShapeType.capsule.rawValue })
 }
 
+@Test func polyFillEmitsCentroidFanOfConvexPolyTriangles() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    // A square: 4 edges -> 4 fan triangles -> 12 vertices.
+    d.polyFill([SIMD2<Float>(-10, -10), SIMD2<Float>(10, -10),
+                SIMD2<Float>(10, 10), SIMD2<Float>(-10, 10)])
+    #expect(b.vertices.count == 12)
+    #expect(b.vertices.allSatisfy { $0.type == ShapeType.convexPoly.rawValue })
+    #expect(b.vertices.allSatisfy { $0.fill == 1 })
+}
+
+@Test func polyFillPacksTrueOuterEdgeIntoAttributes() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    // Centroid is the origin, so centroid-local edge 0 is (-10,-10)->(10,-10).
+    d.polyFill([SIMD2<Float>(-10, -10), SIMD2<Float>(10, -10),
+                SIMD2<Float>(10, 10), SIMD2<Float>(-10, 10)], aa: 2)
+    let v = b.vertices.first!
+    #expect(v.attributes.x == -10 && v.attributes.y == -10)  // edge start A
+    #expect(v.attributes.z == 10 && v.attributes.w == -10)   // edge end B
+    #expect(v.aa == 2)
+}
+
+@Test func polyFillExpandsRimOutwardByAAForFringe() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    // Square ±10 centred at origin, identity transform: positions are centroid-local.
+    // Mitred corners push out by ~aa, so the bounds grow from ±10 to ≈ ±12.
+    d.polyFill([SIMD2<Float>(-10, -10), SIMD2<Float>(10, -10),
+                SIMD2<Float>(10, 10), SIMD2<Float>(-10, 10)], aa: 2)
+    let xs = b.vertices.map(\.pos.x)
+    let ys = b.vertices.map(\.pos.y)
+    #expect(abs(xs.min()! - (-12)) < 0.5)
+    #expect(abs(xs.max()! -   12) < 0.5)
+    #expect(abs(ys.min()! - (-12)) < 0.5)
+    #expect(abs(ys.max()! -   12) < 0.5)
+}
+
+@Test func polyFillWithFewerThanThreePointsEmitsNothing() {
+    let b = Batcher()
+    let d = Draw(batcher: b)
+    d.polyFill([SIMD2<Float>(0, 0), SIMD2<Float>(10, 0)])
+    #expect(b.vertices.isEmpty)
+}
+
 @Test func polylineWithFewerThanTwoPointsEmitsNothing() {
     let b = Batcher()
     let d = Draw(batcher: b)
