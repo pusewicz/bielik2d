@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build Bielik2DWebDemo as a WebAssembly + JS bundle via the PackageToJS
-# plugin shipped with JavaScriptKit. Requires:
+# Build Bielik2DDemo (the unified native+web demo) as a WebAssembly + JS bundle
+# via the PackageToJS plugin shipped with JavaScriptKit. Requires:
 #
 #   1. A swift.org toolchain (Xcode's bundled toolchain lacks the wasm32 backend).
 #      The simplest install is via swiftly:
@@ -49,10 +49,10 @@ if ! "$SWIFT_BIN" sdk list 2>/dev/null | grep -qx "$SDK_ID"; then
     exit 1
 fi
 
-echo "==> running PackageToJS plugin for Bielik2DWebDemo (sdk: $SDK_ID)"
+echo "==> running PackageToJS plugin for Bielik2DDemo (sdk: $SDK_ID)"
 swift package --swift-sdk "$SDK_ID" \
     --disable-sandbox \
-    js -c release --product Bielik2DWebDemo --output "$DIST"
+    js -c release --product Bielik2DDemo --output "$DIST"
 
 echo "==> copying shader resources"
 mkdir -p "$DIST/shaders"
