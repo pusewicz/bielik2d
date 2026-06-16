@@ -18,6 +18,7 @@ let stage = Rect(x: 40, y: titleBandHeight,
 // Scenes are appended in display order; the array stays buildable as each is added.
 let scenes: [Scene] = [
     try SpritesScene(app: app),
+    try PixelArtScene(app: app),
 ]
 var current = 0
 
