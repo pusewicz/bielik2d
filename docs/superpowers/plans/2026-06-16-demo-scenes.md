@@ -114,7 +114,7 @@ final class SpritesScene: Scene {
         p.draw(at: SIMD2(cx - 240, cy - Float(player.height) * 2))
         ctx.draw.text("Sprite(path:)", font: ctx.font, at: SIMD2(cx - 260, cy + 90), color: .white)
 
-        blinker.update(ctx.dt)
+        blinker.update(Double(ctx.dt))   // Sprite.update takes Double; ctx.dt is Float
         blinker.draw(at: SIMD2(cx + 120, cy - 64))
         ctx.draw.text("animated sheet", font: ctx.font, at: SIMD2(cx + 90, cy + 90), color: .white)
     }
@@ -162,11 +162,15 @@ let scenes: [Scene] = [
 ]
 var current = 0
 
+// `@MainActor`: top-level globals in main.swift are main-actor-isolated under Swift 6, and these
+// free functions touch them, so they must be isolated too.
+@MainActor
 func makeContext(dt: Float, time: Float) -> SceneContext {
     SceneContext(app: app, draw: draw, font: font, camera: camera,
                  dt: dt, time: time, stage: stage, windowSize: windowSize)
 }
 
+@MainActor
 func drawHUD(_ scene: Scene, index: Int, count: Int) {
     draw.text("Scene \(index + 1)/\(count)", font: smallFont, at: SIMD2(40, 18),
               color: Color(r: 0.55, g: 0.7, b: 0.85))
