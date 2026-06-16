@@ -26,6 +26,7 @@ let scenes: [Scene] = [
     try TextCanvasScene(app: app),
     FlowScene(app: app),
     CollisionScene(app: app),
+    SweptTOIScene(app: app),
 ]
 var current = 0
 
