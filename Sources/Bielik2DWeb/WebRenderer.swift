@@ -30,6 +30,11 @@ public final class WebRenderer: RenderBackend {
     /// pointer is a stable token the caller maps to a real WebGPU texture.
     private var textureBindGroups: [UInt: JSObject] = [:]
 
+    /// Backing storage for `makeCanvas` tokens — each canvas's process-unique
+    /// `OpaquePointer` is the address of one of these heap cells, kept alive for
+    /// the renderer's lifetime so the registered bind group stays valid.
+    private var canvasTokenStorage: [UnsafeMutableRawPointer] = []
+
     /// Bound when a command carries no texture. Defaults to the white pixel;
     /// the minimal demo points it at its sprite PNG so its untextured quad still
     /// samples the image while SDF commands stay unaffected.
@@ -102,13 +107,55 @@ public final class WebRenderer: RenderBackend {
     }
 
     public func render(_ list: DrawList, camera: Camera, clear: Color?) {
-        // Keep the camera uniform fresh (the demo may pan/zoom between frames).
+        uploadFrame(list: list, camera: camera)
+        let cc = clearColor(clear)
+        let targetW = backend.canvasWidth
+        let targetH = backend.canvasHeight
+        // Swapchain target: grab the current drawable's view and encode the loop.
+        guard let texture = backend.context.getCurrentTexture!().object,
+              let view = texture.createView!().object else { return }
+        backend.renderPass(into: view, clear: cc) { pass in
+            self.encodeCommands(list, into: pass, targetW: targetW, targetH: targetH)
+        }
+    }
+
+    /// Renders `draw`'s queued geometry into an offscreen `WebCanvas`, then resets
+    /// the queue (mirrors the native `Renderer.render(_:to:)`). The canvas texture
+    /// can then be sampled back via `Draw.canvas(_:at:)`. `camera` defaults to an
+    /// orthographic projection sized to the canvas.
+    public func render(_ draw: Draw, to canvas: WebCanvas, clear: Color? = nil, camera: Camera? = nil) {
+        let cam = camera ?? Camera(viewportSize: SIMD2(Float(canvas.width), Float(canvas.height)))
+        let list = draw.drawList()
+        uploadFrame(list: list, camera: cam)
+        let cc = clearColor(clear)
+        guard let view = canvas.texture.createView!().object else { return }
+        backend.renderPass(into: view, clear: cc) { pass in
+            self.encodeCommands(list, into: pass, targetW: canvas.width, targetH: canvas.height)
+        }
+        draw.clearQueue()
+    }
+
+    /// Allocates an offscreen render target and registers it under a stable token
+    /// so `Draw.canvas(_:at:)` can bind it as a sampled texture. The colour format
+    /// matches the swapchain so the shared pipelines render into it unchanged.
+    public func makeCanvas(width: Int, height: Int) -> WebCanvas {
+        let texture = backend.makeRenderTarget(width: width, height: height)
+        let cell = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
+        canvasTokenStorage.append(cell)
+        let token = OpaquePointer(cell)
+        registerTexture(token, texture: texture)
+        return WebCanvas(texture: texture, token: token, width: width, height: height)
+    }
+
+    // MARK: - Shared frame plumbing
+
+    /// Uploads the camera uniform and the frame's vertices once per render.
+    private func uploadFrame(list: DrawList, camera: Camera) {
         var viewProj = camera.viewProjection
         withUnsafeBytes(of: &viewProj) { ptr in
             let bytes = Array(ptr.bindMemory(to: UInt8.self))
             _ = backend.queue.writeBuffer!(uniformBuffer, 0, JSTypedArray<UInt8>(bytes).jsObject)
         }
-
         let n = list.vertices.count
         if n > 0 && n <= maxVertexCount {
             list.vertices.withUnsafeBytes { ptr in
@@ -116,64 +163,65 @@ public final class WebRenderer: RenderBackend {
                 _ = backend.queue.writeBuffer!(vertexBuffer, 0, JSTypedArray<UInt8>(bytes).jsObject)
             }
         }
+    }
 
-        let cc: ClearColor? = clear.map {
-            ClearColor(r: Double($0.r), g: Double($0.g), b: Double($0.b), a: Double($0.a))
-        }
+    private func clearColor(_ clear: Color?) -> ClearColor? {
+        clear.map { ClearColor(r: Double($0.r), g: Double($0.g), b: Double($0.b), a: Double($0.a)) }
+    }
 
-        let targetW = Float(backend.canvasWidth)
-        let targetH = Float(backend.canvasHeight)
+    /// Walks the draw list, switching pipeline / scissor / viewport / texture and
+    /// issuing one draw per command — the single command loop shared by the
+    /// swapchain and offscreen-canvas paths.
+    private func encodeCommands(_ list: DrawList, into pass: JSObject, targetW: Int, targetH: Int) {
+        let n = list.vertices.count
+        guard n > 0, n <= maxVertexCount else { return }
+        _ = pass.setBindGroup!(0, cameraBindGroup)
+        _ = pass.setVertexBuffer!(0, vertexBuffer)
 
-        backend.frame(clear: cc) { pass in
-            guard n > 0, n <= self.maxVertexCount else { return }
-            _ = pass.setBindGroup!(0, self.cameraBindGroup)
-            _ = pass.setVertexBuffer!(0, self.vertexBuffer)
+        // Mirror native: track last-applied state so redundant pipeline /
+        // scissor / viewport switches are skipped within the pass.
+        var lastBlend: BlendMode? = nil
+        var lastScissorApplied = false
+        var lastViewportApplied = false
 
-            // Mirror native: track last-applied state so redundant pipeline /
-            // scissor / viewport switches are skipped within the pass.
-            var lastBlend: BlendMode? = nil
-            var lastScissorApplied = false
-            var lastViewportApplied = false
-
-            for c in list.commands {
-                if lastBlend != c.state.blendMode {
-                    let key = WebPipelineKey(shader: .sprite, blend: c.state.blendMode)
-                    _ = pass.setPipeline!(self.cache.pipeline(for: key))
-                    lastBlend = c.state.blendMode
-                }
-
-                // Scissor: nil clears to full target. WebGPU has no "disable", so
-                // we reset to the whole target when a command drops its clip.
-                if let scissor = c.state.scissor {
-                    let s = scissorPixelRect(scissor, scale: 1, targetW: Int(targetW), targetH: Int(targetH))
-                    _ = pass.setScissorRect!(s.x, s.y, s.w, s.h)
-                    lastScissorApplied = true
-                } else if lastScissorApplied {
-                    _ = pass.setScissorRect!(0, 0, Int(targetW), Int(targetH))
-                    lastScissorApplied = false
-                }
-
-                if let viewport = c.state.viewport {
-                    let v = viewportPixelRect(viewport, scale: 1, targetW: Int(targetW), targetH: Int(targetH))
-                    _ = pass.setViewport!(Double(v.x), Double(v.y), Double(v.w), Double(v.h), 0.0, 1.0)
-                    lastViewportApplied = true
-                } else if lastViewportApplied {
-                    _ = pass.setViewport!(0.0, 0.0, Double(targetW), Double(targetH), 0.0, 1.0)
-                    lastViewportApplied = false
-                }
-
-                // Texture: registered token → its bind group; otherwise the
-                // default (white pixel, or the demo's sprite texture).
-                let group1: JSObject
-                if let token = c.state.texture, let bg = self.textureBindGroups[UInt(bitPattern: token)] {
-                    group1 = bg
-                } else {
-                    group1 = self.defaultTextureBindGroup
-                }
-                _ = pass.setBindGroup!(1, group1)
-
-                _ = pass.draw!(c.vertexCount, 1, c.vertexStart, 0)
+        for c in list.commands {
+            if lastBlend != c.state.blendMode {
+                let key = WebPipelineKey(shader: .sprite, blend: c.state.blendMode)
+                _ = pass.setPipeline!(cache.pipeline(for: key))
+                lastBlend = c.state.blendMode
             }
+
+            // Scissor: nil clears to full target. WebGPU has no "disable", so
+            // we reset to the whole target when a command drops its clip.
+            if let scissor = c.state.scissor {
+                let s = scissorPixelRect(scissor, scale: 1, targetW: targetW, targetH: targetH)
+                _ = pass.setScissorRect!(s.x, s.y, s.w, s.h)
+                lastScissorApplied = true
+            } else if lastScissorApplied {
+                _ = pass.setScissorRect!(0, 0, targetW, targetH)
+                lastScissorApplied = false
+            }
+
+            if let viewport = c.state.viewport {
+                let v = viewportPixelRect(viewport, scale: 1, targetW: targetW, targetH: targetH)
+                _ = pass.setViewport!(Double(v.x), Double(v.y), Double(v.w), Double(v.h), 0.0, 1.0)
+                lastViewportApplied = true
+            } else if lastViewportApplied {
+                _ = pass.setViewport!(0.0, 0.0, Double(targetW), Double(targetH), 0.0, 1.0)
+                lastViewportApplied = false
+            }
+
+            // Texture: registered token → its bind group; otherwise the
+            // default (white pixel, or the demo's sprite texture).
+            let group1: JSObject
+            if let token = c.state.texture, let bg = textureBindGroups[UInt(bitPattern: token)] {
+                group1 = bg
+            } else {
+                group1 = defaultTextureBindGroup
+            }
+            _ = pass.setBindGroup!(1, group1)
+
+            _ = pass.draw!(c.vertexCount, 1, c.vertexStart, 0)
         }
     }
 }

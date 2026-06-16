@@ -156,6 +156,54 @@ public final class WebGPURenderBackend {
         _ = queue.submit!(submitList)
     }
 
+    /// Runs a single render pass into an arbitrary `targetView` (rather than the
+    /// swapchain). Used by render-to-canvas: the offscreen texture's view is the
+    /// colour attachment. `nil` clear loads existing contents (composite); a set
+    /// clear wipes first. Encoding/submission mirrors `frame(clear:render:)`.
+    public func renderPass(into targetView: JSObject, clear: ClearColor?,
+                           render: (JSObject) -> Void = { _ in }) {
+        var attachmentPairs: [String: JSValue] = [
+            "view": .object(targetView),
+            "loadOp": .string(clear == nil ? "load" : "clear"),
+            "storeOp": .string("store"),
+        ]
+        if let clear {
+            attachmentPairs["clearValue"] = .object(newObject([
+                "r": .number(clear.r),
+                "g": .number(clear.g),
+                "b": .number(clear.b),
+                "a": .number(clear.a),
+            ]))
+        }
+        let colorAttachment = newObject(attachmentPairs)
+        let attachments = JSObject.global.Array.function!.new(colorAttachment)
+        let descriptor = newObject(["colorAttachments": .object(attachments)])
+
+        guard let encoder = device.createCommandEncoder!().object,
+              let pass = encoder.beginRenderPass!(descriptor).object else { return }
+        render(pass)
+        _ = pass.end!()
+        guard let cmd = encoder.finish!().object else { return }
+        let submitList = JSObject.global.Array.function!.new(cmd)
+        _ = queue.submit!(submitList)
+    }
+
+    /// Creates an offscreen colour-target texture that can also be sampled.
+    /// `format` defaults to the preferred canvas format so a render-to-canvas
+    /// target matches the swapchain's pipeline colour format (the pipeline cache
+    /// is built for `preferredFormat`).
+    public func makeRenderTarget(width: Int, height: Int, format: String? = nil) -> JSObject {
+        device.createTexture!(WebJS.object([
+            "size": .object(WebJS.object([
+                "width": .number(Double(width)),
+                "height": .number(Double(height)),
+                "depthOrArrayLayers": .number(1),
+            ])),
+            "format": .string(format ?? preferredFormat),
+            "usage": .number(Double(GPUTextureUsage.textureBinding | GPUTextureUsage.renderAttachment | GPUTextureUsage.copySrc | GPUTextureUsage.copyDst)),
+        ])).object!
+    }
+
     /// Wraps an already-decoded `ImageBitmap` in a fresh RGBA8 GPU texture.
     /// Uses `queue.copyExternalImageToTexture` for a zero-CPU upload.
     /// Returns `(texture, width, height)`.

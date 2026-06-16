@@ -140,10 +140,10 @@ enum ShaderID: Hashable { case basic, sprite }
 
 ### Task 3.3: Web TextEngine + canvas render-to-texture
 **Files:** Create `Sources/Bielik2DWeb/WebFont.swift`; extend `WebRenderer` with `makeTextEngine()`, `makeCanvas()`, `render(_:to:clear:camera:)`.
-- [ ] **Step 1:** Define web `TextEngine` conforming to the neutral seam (Phase 5 makes `Font`/`TextEngine` neutral; if ordering bites, do Phase 5 first). It rasterizes glyph runs via `WebTextRasterizer` (Canvas2D) into a texture and emits quads into the batcher, matching the native `TextEngine` contract.
-- [ ] **Step 2:** Implement `makeCanvas()` returning a `Canvas` whose backing is an offscreen WebGPU texture, and `render(list, to: canvas)`.
-- [ ] **Step 3:** `./scripts/build-web.sh`; defer in-browser text verification to Phase 5/6.
-- [ ] **Step 4:** Commit: `"add web text engine and render-to-canvas"`.
+- [x] **Step 1:** Define web `TextEngine` conforming to the neutral seam (Phase 5 makes `Font`/`TextEngine` neutral; if ordering bites, do Phase 5 first). It rasterizes glyph runs via `WebTextRasterizer` (Canvas2D) into a texture and emits quads into the batcher, matching the native `TextEngine` contract.
+- [x] **Step 2:** Implement `makeCanvas()` returning a `Canvas` whose backing is an offscreen WebGPU texture, and `render(list, to: canvas)`.
+- [x] **Step 3:** `./scripts/build-web.sh`; defer in-browser text verification to Phase 5/6.
+- [x] **Step 4:** Commit: `"add web text engine and render-to-canvas"`.
 
 ### Task 3.4: Web sprite upload
 **Files:** `WebRenderer.swift`
