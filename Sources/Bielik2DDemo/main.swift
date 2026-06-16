@@ -91,6 +91,19 @@ app.flow.run {
     }
 }
 
+// Swept-TOI showcase: a ball under gravity that slides down a ramp, along a floor, and into a
+// wall via `move(by:against:)` — continuous (tunnel-proof) collision plus surface sliding against
+// a heterogeneous static world (a Polygon ramp + two AABBs). It respawns once it comes to rest.
+let slideRamp = Polygon(vertices: [SIMD2(500, 440), SIMD2(640, 520), SIMD2(500, 520)])
+let slideFloor = AABB(min: SIMD2(500, 520), max: SIMD2(740, 540))
+let slideWall = AABB(min: SIMD2(740, 440), max: SIMD2(760, 540))
+let slideWorld: [CollisionShape] = [slideRamp, slideFloor, slideWall]
+let slideSpawn = SIMD2<Float>(525, 388)
+var ballPos = slideSpawn
+var ballVel = SIMD2<Float>(0, 0)
+var ballSettle: Float = 0
+let slideGravity: Float = 1100
+
 while app.isRunning {
     app.update()
 
@@ -231,6 +244,25 @@ while app.isRunning {
                    SIMD2(1045, shapeY + 30), SIMD2(1000, shapeY + 20)],
                   stroke: 3, color: Color(r: 0.8, g: 0.7, b: 1.0))
     }
+
+    // Step the gravity ball with continuous collision + sliding against the static world.
+    ballVel.y += slideGravity * Float(dt)
+    let ball = Circle(center: ballPos, radius: 11)
+    let slid = ball.move(by: ballVel * Float(dt), against: slideWorld)
+    ballPos += slid.motion
+    for n in slid.normals {                       // kill the velocity component into each contact
+        let into = ballVel.x * n.x + ballVel.y * n.y
+        if into < 0 { ballVel -= n * into }
+    }
+    let speed = (ballVel.x * ballVel.x + ballVel.y * ballVel.y).squareRoot()
+    if !slid.normals.isEmpty && speed < 25 { ballSettle += Float(dt) } else { ballSettle = 0 }
+    if ballSettle > 0.6 || ballPos.y > 600 { ballPos = slideSpawn; ballVel = .zero; ballSettle = 0 }
+    let slideTint = Color(r: 0.4, g: 0.95, b: 0.85)
+    draw.debug(slideRamp, color: slideTint, stroke: 2)
+    draw.debug(slideFloor, color: slideTint, stroke: 2)
+    draw.debug(slideWall, color: slideTint, stroke: 2)
+    draw.circleFill(center: ballPos, radius: 11, color: Color(r: 1.0, g: 0.55, b: 0.2))
+    draw.text("move & slide", font: font, at: SIMD2(610, 400), color: .white)
 
     // Composite the offscreen canvas top-right, upscaled with pixel-art sampling.
     draw.with(scaleMode: .pixelArt) {
