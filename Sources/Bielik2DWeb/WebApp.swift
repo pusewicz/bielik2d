@@ -44,6 +44,11 @@ public final class App {
     /// The active GPU backend name. Web always runs on WebGPU. Diagnostics only.
     public var driverName: String { "webgpu" }
 
+    /// The renderer's image cache. The web bootstrap `await`s `prefetch(_:)` on
+    /// this with every sprite path before building scenes, so `Sprite(path:)`
+    /// resolves synchronously per frame.
+    public var assetLoader: AssetLoader? { renderer.assetLoader }
+
     /// Seconds elapsed during the last `update()`, clamped to `maxFrameSeconds` so a
     /// stall (tab backgrounded, asset load) can't blow up tweens with one giant step.
     public private(set) var deltaTime: Double = 0
@@ -77,11 +82,13 @@ public final class App {
         // canvas's pixel resolution, matching native.
         Font.ambientPixelDensity = platform.pixelDensity
         Draw.ambientPixelDensity = platform.pixelDensity
-        // Audio + Flow ambients, like native. (There is no web `Renderer.current`:
-        // that static is native-only — web sprites resolve through the renderer
-        // handed to them directly, so nothing to install here.)
+        // Audio + Flow ambients, like native. The web `Sprite` twin resolves
+        // `Sprite(path:)` through `WebRenderer.current` (the web analogue of the
+        // native `Renderer.current`), reading images the bootstrap prefetched into
+        // the renderer's `assetLoader`.
         Audio.current = audio
         Flow.current = flow
+        WebRenderer.current = renderer
 
         self.lastNow = nowMillis()
     }
@@ -95,6 +102,10 @@ public final class App {
         // "bielik2d" canvas, matching the existing web demo wiring.
         let platform = try WebPlatform.attach(canvasID: "bielik2d")
         let renderer = try await makeRenderer(on: platform)
+        // Install the web asset loader so `Sprite(path:)` resolves prefetched
+        // images; the bootstrap prefetches sprite paths through `app.assetLoader`
+        // before constructing scenes.
+        renderer.assetLoader = WebAssetLoader()
         // Audio is best-effort: a context that fails to construct runs silently.
         let audio = try? Audio()
         return App(platform: platform, renderer: renderer, audio: audio)
@@ -181,6 +192,7 @@ public final class App {
     /// stop the flow, and destroy audio. Mirrors native `App.destroy()`.
     public func destroy() {
         if Flow.current === flow { Flow.current = nil }
+        if WebRenderer.current === renderer { WebRenderer.current = nil }
         flow.stopAll()
         if Audio.current === audio { Audio.current = nil }
         audio?.destroy()

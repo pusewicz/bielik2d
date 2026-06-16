@@ -45,6 +45,16 @@ public final class WebRenderer: RenderBackend {
     /// samples the image while SDF commands stay unaffected.
     public var defaultTextureBindGroup: JSObject
 
+    /// The asset cache `Sprite(path:)` reads from — the web bootstrap prefetches
+    /// every sprite path into it before scenes are built, so per-frame scene code
+    /// resolves images synchronously (the web twin of the native registry's
+    /// disk-backed loader). `nil` means no loader installed yet.
+    public var assetLoader: AssetLoader?
+
+    /// Backing storage for the ambient `WebRenderer.current` (declared in the
+    /// `Sprite` extension; a stored static can't live in an extension).
+    nonisolated(unsafe) static var _current: WebRenderer?
+
     public init(backend: WebGPURenderBackend,
                 cache: WebPipelineCache,
                 vertexBuffer: JSObject,
