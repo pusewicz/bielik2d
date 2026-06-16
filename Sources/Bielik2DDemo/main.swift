@@ -21,6 +21,7 @@ let scenes: [Scene] = [
     try PixelArtScene(app: app),
     try InputScene(app: app),
     try AudioScene(app: app),
+    PrimitivesScene(app: app),
 ]
 var current = 0
 
