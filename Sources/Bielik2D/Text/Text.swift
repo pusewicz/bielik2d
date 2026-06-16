@@ -104,3 +104,16 @@ extension Draw {
     }
 }
 #endif
+
+#if os(WASI)
+/// Portable `Draw.text` entry point for the web build. The actual Canvas 2D
+/// rasterization-to-batcher wiring lands in Phase 3.3; for now this resolves the
+/// web text engine (a `TextEngineProtocol`) and hands it the descriptor so the
+/// call compiles and is identical to native at the source level.
+extension Draw {
+    public func text(_ string: String, font: Font, at origin: SIMD2<Float>, color: Color = .white) {
+        guard let engine = textEngine as? TextEngineProtocol else { return }
+        engine.drawText(string, font: font, at: origin, color: color, into: self)
+    }
+}
+#endif
