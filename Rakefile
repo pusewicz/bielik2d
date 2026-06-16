@@ -107,4 +107,40 @@ namespace :gen do
   end
 end
 
+# ---------------------------------------------------------------------
+# Dev convenience: thin wrappers over SwiftPM. Release variants matter
+# because perf work must be measured with `-c release` (debug is 5-20×
+# slower).
+
+DEMO = "Bielik2DDemo".freeze
+
+desc "Run the demo app (#{DEMO})"
+task :run do
+  sh "swift", "run", DEMO
+end
+
+namespace :run do
+  desc "Run the demo app in release"
+  task :release do
+    sh "swift", "run", "-c", "release", DEMO
+  end
+end
+
+desc "Build the package (debug)"
+task :build do
+  sh "swift", "build"
+end
+
+namespace :build do
+  desc "Build the package in release"
+  task :release do
+    sh "swift", "build", "-c", "release"
+  end
+end
+
+desc "Run the test suite"
+task :test do
+  sh "swift", "test"
+end
+
 task default: "gen:constants"
