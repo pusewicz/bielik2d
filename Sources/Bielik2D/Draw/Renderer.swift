@@ -83,7 +83,7 @@ public final class Renderer: RenderBackend {
             cmd.submit()
             return
         }
-        flushList(list, into: swap, clear: clear, camera: camera, on: cmd)
+        flushList(list, into: swap, clear: clear, camera: camera, on: cmd, pointScale: Draw.ambientPixelDensity)
         cmd.submit()
     }
 
@@ -109,7 +109,7 @@ public final class Renderer: RenderBackend {
     /// Uploads the list's vertices, runs one render pass into `colorTarget`
     /// (binding the white texture for untextured commands). Does not reset any
     /// queue — callers own that.
-    private func flushList(_ list: DrawList, into colorTarget: Texture, clear: Color?, camera: Camera, on cmd: CommandBuffer, cycleTarget: Bool = false) {
+    private func flushList(_ list: DrawList, into colorTarget: Texture, clear: Color?, camera: Camera, on cmd: CommandBuffer, cycleTarget: Bool = false, pointScale: Float = 1.0) {
         let (vertices, commands) = resolvedGeometry(for: list)
         lastDrawCallCount = commands.count
 
@@ -131,10 +131,27 @@ public final class Renderer: RenderBackend {
         cmd.pushVertexUniform(camera.viewProjection)
         cmd.withRenderPass(colorTarget: colorTarget, clear: clear, cycle: cycleTarget) { pass in
             guard byteCount > 0 else { return }
-            let pipe = pipelines.get(PipelineKey(shaderID: 0, colorFormat: colorTarget.format, blendMode: .alpha))
-            pass.bind(pipe)
-            pass.bindVertexBuffer(vbuf)
+            pass.bindVertexBuffer(vbuf)   // bindings persist across pipeline switches
+            let tw = colorTarget.width, th = colorTarget.height
+            var lastBlend: BlendMode? = nil
+            var lastScissor: Rect?? = nil
+            var lastViewport: Rect?? = nil
             for c in commands {
+                if lastBlend != c.state.blendMode {
+                    pass.bind(pipelines.get(PipelineKey(shaderID: 0, colorFormat: colorTarget.format,
+                                                        blendMode: c.state.blendMode)))
+                    lastBlend = c.state.blendMode
+                }
+                if lastScissor != .some(c.state.scissor) {
+                    let s = scissorPixelRect(c.state.scissor, scale: pointScale, targetW: tw, targetH: th)
+                    pass.setScissor(x: s.x, y: s.y, width: s.w, height: s.h)
+                    lastScissor = .some(c.state.scissor)
+                }
+                if lastViewport != .some(c.state.viewport) {
+                    let v = viewportPixelRect(c.state.viewport, scale: pointScale, targetW: tw, targetH: th)
+                    pass.setViewport(x: v.x, y: v.y, width: v.w, height: v.h)
+                    lastViewport = .some(c.state.viewport)
+                }
                 let tex = c.state.texture ?? whiteTexture.handle
                 pass.bindFragmentSampler(textureHandle: tex, sampler: sampler)
                 pass.draw(vertexCount: c.vertexCount, firstVertex: c.vertexStart)
