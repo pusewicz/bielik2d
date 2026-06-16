@@ -20,6 +20,7 @@ let scenes: [Scene] = [
     try SpritesScene(app: app),
     try PixelArtScene(app: app),
     try InputScene(app: app),
+    try AudioScene(app: app),
 ]
 var current = 0
 
