@@ -14,10 +14,16 @@ jobs:
         with:
           submodules: recursive
 
+      # The runner's default Xcode ships Swift 6.1; the package needs 6.2+.
+      - name: select latest Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - name: install homebrew deps
         run: |
           brew update
-          brew install sdl3 sdl3_image sdl3_ttf glslang spirv-cross spirv-tools spirv-headers
+          brew install sdl3 sdl3_image sdl3_ttf sdl3_mixer glslang spirv-cross spirv-tools spirv-headers
 
       - name: build vendored SDL_shadercross
         run: ./scripts/build-vendor.sh

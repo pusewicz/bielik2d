@@ -11,7 +11,7 @@ v0 is functional: sprites, SDF primitives (circle, line), render-to-texture canv
 - Homebrew packages:
 
   ```sh
-  brew install sdl3 sdl3_image sdl3_ttf glslang spirv-cross spirv-tools spirv-headers
+  brew install sdl3 sdl3_image sdl3_ttf sdl3_mixer glslang spirv-cross spirv-tools spirv-headers
   ```
 
 - `SDL_shadercross` is vendored under `vendor/` and built locally.
