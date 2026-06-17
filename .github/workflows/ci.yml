@@ -10,7 +10,7 @@ jobs:
   build-and-test:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -20,16 +20,53 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      # Reuse already-downloaded bottles so brew only re-fetches changed formulae.
+      - name: cache Homebrew downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/Homebrew/downloads
+          key: brew-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: brew-${{ runner.os }}-
+
       - name: install homebrew deps
         run: |
           brew update
           brew install sdl3 sdl3_image sdl3_ttf sdl3_mixer glslang spirv-cross spirv-tools spirv-headers
 
+      # SDL_shadercross is a CMake build pinned to a submodule commit, so cache the
+      # install prefix + build tree keyed on that commit and the build script. A hit
+      # skips the build entirely.
+      - name: resolve SDL_shadercross revision
+        id: shadercross-rev
+        run: echo "sha=$(git -C vendor/SDL_shadercross rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: cache vendored SDL_shadercross
+        id: cache-shadercross
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor/.install
+            vendor/SDL_shadercross/build
+          key: shadercross-${{ runner.os }}-${{ steps.shadercross-rev.outputs.sha }}-${{ hashFiles('scripts/build-vendor.sh') }}
+
       - name: build vendored SDL_shadercross
+        if: steps.cache-shadercross.outputs.cache-hit != 'true'
         run: ./scripts/build-vendor.sh
 
       - name: compile shaders
         run: ./Shaders/build.sh
+
+      # Cache resolved package checkouts + compiled artifacts. On a hit `swift build`
+      # skips re-cloning JavaScriptKit/kvSIMD and reuses object files; restore-keys
+      # still recovers the checkouts when Package.swift changes.
+      - name: cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
 
       - name: swift build
         run: swift build

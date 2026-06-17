@@ -23,15 +23,38 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The swift.org toolchain links libcurl; without it swiftly's post-install
       # check exits non-zero and fails the toolchain step.
       - name: install toolchain system deps
         run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
 
+      # The swiftly toolchain + wasm SDK are large downloads pinned by the install
+      # script. install-wasm-sdk.sh is idempotent, so a restored cache turns it into
+      # a near no-op (just version checks).
+      - name: cache swift wasm toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/swiftly
+            ~/.swiftly
+            ~/.swiftpm/swift-sdks
+          key: wasm-toolchain-${{ runner.os }}-${{ hashFiles('scripts/install-wasm-sdk.sh') }}
+
       - name: install swift wasm toolchain
         run: ./scripts/install-wasm-sdk.sh
+
+      # Cache resolved package checkouts + compiled wasm artifacts so the bundle
+      # build skips re-cloning JavaScriptKit/kvSIMD and reuses object files.
+      - name: cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/.cache/org.swift.swiftpm
+          key: spm-wasm-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: spm-wasm-${{ runner.os }}-
 
       - name: build web bundle
         run: |
