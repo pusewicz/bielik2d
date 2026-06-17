@@ -14,6 +14,13 @@ let nativeLibPaths: [LinkerSetting] = [
     )
 ]
 
+// SDL's umbrella headers pull in siblings via `#include <SDL3/...>`, so the
+// Homebrew include prefix must be on the clang header search path when the CSDL3
+// module is built. A clean checkout (e.g. CI) has no such path by default.
+let nativeHeaderPaths: [SwiftSetting] = [
+    .unsafeFlags(["-Xcc", "-I/opt/homebrew/include"], .when(platforms: [.macOS]))
+]
+
 let package = Package(
     name: "Bielik2D",
     platforms: [.macOS(.v15)],
@@ -51,6 +58,7 @@ let package = Package(
                 ),
             ],
             resources: [.copy("Resources/shaders")],
+            swiftSettings: nativeHeaderPaths,
             linkerSettings: nativeLibPaths
         ),
         .target(
@@ -68,6 +76,7 @@ let package = Package(
                 .target(name: "CSDL3", condition: .when(platforms: [.macOS])),
             ],
             resources: [.copy("fixtures")],
+            swiftSettings: nativeHeaderPaths,
             linkerSettings: nativeLibPaths
         ),
         .executableTarget(
@@ -79,12 +88,14 @@ let package = Package(
                 .product(name: "JavaScriptEventLoop", package: "JavaScriptKit", condition: .when(platforms: [.wasi])),
             ],
             resources: [.copy("assets")],
+            swiftSettings: nativeHeaderPaths,
             linkerSettings: nativeLibPaths
         ),
         .executableTarget(
             name: "Bielik2DBenchmark",
             dependencies: ["Bielik2D"],
             resources: [.copy("assets")],
+            swiftSettings: nativeHeaderPaths,
             linkerSettings: nativeLibPaths
         ),
     ]
