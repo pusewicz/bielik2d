@@ -88,26 +88,16 @@ The host HTML uses an import map to resolve the `@bjorn3/browser_wasi_shim` bare
 import Bielik2D
 
 let app = try App(title: "Hello", width: 1280, height: 720)
-let batcher = Batcher()
-let draw = Draw(batcher: batcher)
-let camera = Camera(viewportSize: SIMD2(1280, 720))
+let draw = Draw()
 
 while app.isRunning {
     app.update()
-    guard let window = app.window else { break }
-
-    batcher.reset()
     draw.circleFill(center: SIMD2(640, 360), radius: 100, color: .white)
-
-    let cmd = try app.gpu.acquireCommandBuffer()
-    guard let swap = cmd.acquireSwapchainTexture(for: window, device: app.gpu) else {
-        cmd.submit(); continue
-    }
-    cmd.pushVertexUniform(camera.viewProjection)
-    cmd.withRenderPass(colorTarget: swap, clear: .black) { _ in
-        // bind pipeline, draw — see Bielik2DDemo for the full pattern.
-    }
-    cmd.submit()
+    app.drawOntoScreen(draw, clear: .black)
 }
 app.destroy()
 ```
+
+`drawOntoScreen` flushes the queued draw calls through the renderer and presents — no
+manual command buffer, swapchain, render pass, or camera wiring. Pass a `camera:` when you
+need a custom viewport or transform; see `Bielik2DDemo` for the full pattern.
