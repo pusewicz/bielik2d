@@ -94,7 +94,7 @@ struct GPUResourceTests {
         let nearest = try app.gpu.makeSampler(filter: .nearest, addressMode: .clampToEdge)
         defer { nearest.destroy() }
         let linear = try app.gpu.makeSampler(filter: .linear, addressMode: .repeat)
-        defer { linear.destroy() }
+        linear.destroy()
     }
 
     @Test func transferBufferMapsAndStoresBytes() throws {

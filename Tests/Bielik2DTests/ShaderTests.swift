@@ -14,7 +14,7 @@ struct ShaderTests {
         let vs = try Shader.builtin(name: "basic.vert", stage: .vertex, on: app.gpu)
         defer { vs.destroy() }
         let fs = try Shader.builtin(name: "basic.frag", stage: .fragment, on: app.gpu)
-        defer { fs.destroy() }
+        fs.destroy()
     }
 
     @Test func spritePipelineCompilesWithUnifiedVertex() throws {
