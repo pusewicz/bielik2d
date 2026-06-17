@@ -25,6 +25,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The swift.org toolchain links libcurl; without it swiftly's post-install
+      # check exits non-zero and fails the toolchain step.
+      - name: install toolchain system deps
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+
       - name: install swift wasm toolchain
         run: ./scripts/install-wasm-sdk.sh
 
