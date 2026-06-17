@@ -2,6 +2,8 @@
 
 A 2D engine in pure Swift 6.3 on top of SDL3's modern GPU API. Inspired by [Cute Framework](https://github.com/RandyGaul/cute_framework), reimagined Swift-side.
 
+**▶ Try the demo in your browser: <https://pusewicz.github.io/bielik2d/>** (the same `Bielik2DDemo`, compiled to WebAssembly + WebGPU; needs Chrome/Edge or Safari 18.2+).
+
 v0 is functional: sprites, SDF primitives (circle, line), render-to-texture canvases, and text via SDL3_ttf. See [`TODO.md`](TODO.md) for the phased roadmap.
 
 ## Requirements
@@ -34,7 +36,7 @@ The demo opens a window with a spinning pink quad, a blue filled circle, a yello
 
 The same `Bielik2DDemo` — all 11 scenes — runs in the browser on WebAssembly + WebGPU from a single target (no separate web demo). It does not use SDL3: the platform layer is JavaScriptKit and the renderer is WebGPU through the browser's JS API, with a `Web Audio` backend, Canvas2D text, and browser keyboard/mouse/gamepad wired into the engine's `Input`. Pure-Swift bits (`Draw`, `Batcher`, `Vertex`, `Primitives`, `Camera`, `Mat3x2`, scenes) are reused unchanged. All scenes are verified rendering in Chrome with zero WebGPU validation warnings.
 
-It auto-deploys to GitHub Pages via the `deploy-web` workflow (`.github/workflows/deploy-web.yml`) — once deployed, it's served at <https://pusewicz.github.io/bielik2d/>.
+**Live demo: <https://pusewicz.github.io/bielik2d/>** (needs WebGPU — Chrome/Edge or Safari 18.2+). It auto-deploys from `main` via the `deploy-web` workflow (`.github/workflows/deploy-web.yml`).
 
 One-time setup (installs `swiftly`, the Swift 6.3.1 toolchain, and the wasm SDK; idempotent):
 
