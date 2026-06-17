@@ -32,13 +32,22 @@ ROOT          = Pathname.new(__dir__).expand_path
 GENERATED_DIR = ROOT / "Sources/Bielik2D/Generated"
 GENERATED_OUT = GENERATED_DIR / "SDLConstants.swift"
 
+# Homebrew's prefix varies by host (Apple Silicon: /opt/homebrew, Intel:
+# /usr/local) and CI may differ, so resolve it rather than hard-coding. Honor
+# an explicit HOMEBREW_PREFIX, fall back to `brew --prefix`, then a sane default.
+BREW_PREFIX = ENV.fetch("HOMEBREW_PREFIX") do
+  prefix = `brew --prefix 2>/dev/null`.strip
+  prefix.empty? ? "/opt/homebrew" : prefix
+end
+BREW_INCLUDE = Pathname.new(BREW_PREFIX) / "include"
+
 # Header directories scanned for macro definitions. Order matters: the
 # first definition wins (we treat duplicates as a sanity check, not a
 # merge).
 HEADER_DIRS = [
-  "/opt/homebrew/include/SDL3",
-  "/opt/homebrew/include/SDL3_image",
-  "/opt/homebrew/include/SDL3_ttf",
+  (BREW_INCLUDE / "SDL3").to_s,
+  (BREW_INCLUDE / "SDL3_image").to_s,
+  (BREW_INCLUDE / "SDL3_ttf").to_s,
   ROOT.join("vendor/.install/include/SDL3_shadercross").to_s,
 ].freeze
 

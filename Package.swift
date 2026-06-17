@@ -1,12 +1,24 @@
 // swift-tools-version:6.2
 import PackageDescription
+import Foundation
+
+// Homebrew's prefix isn't fixed — Apple Silicon uses /opt/homebrew, Intel uses
+// /usr/local, and CI runners can be either — so resolve it rather than
+// hard-coding. Honor an explicit HOMEBREW_PREFIX, otherwise pick the prefix
+// whose `brew` actually exists.
+let homebrewPrefix: String = {
+    if let prefix = ProcessInfo.processInfo.environment["HOMEBREW_PREFIX"], !prefix.isEmpty {
+        return prefix
+    }
+    return FileManager.default.fileExists(atPath: "/opt/homebrew/bin/brew") ? "/opt/homebrew" : "/usr/local"
+}()
 
 let vendorLib = "\(Context.packageDirectory)/vendor/.install/lib"
 
 let nativeLibPaths: [LinkerSetting] = [
     .unsafeFlags(
         [
-            "-L/opt/homebrew/lib",
+            "-L\(homebrewPrefix)/lib",
             "-L\(vendorLib)",
             "-Xlinker", "-rpath", "-Xlinker", vendorLib,
         ],
@@ -18,7 +30,7 @@ let nativeLibPaths: [LinkerSetting] = [
 // Homebrew include prefix must be on the clang header search path when the CSDL3
 // module is built. A clean checkout (e.g. CI) has no such path by default.
 let nativeHeaderPaths: [SwiftSetting] = [
-    .unsafeFlags(["-Xcc", "-I/opt/homebrew/include"], .when(platforms: [.macOS]))
+    .unsafeFlags(["-Xcc", "-I\(homebrewPrefix)/include"], .when(platforms: [.macOS]))
 ]
 
 let package = Package(
